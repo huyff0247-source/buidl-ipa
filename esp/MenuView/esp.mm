@@ -21,18 +21,6 @@ static bool isAimbot = NO;
 static float aimFov = 150.0f; // Bán kính vòng tròn FOV
 static float aimDistance = 200.0f; // Khoảng cách aim mặc định
 
-// --- Anti-Detection Config ---
-static float aimSmoothFactor = 0.35f; // Smooth aim (0.3-0.8, càng cao càng nhanh nhưng vẫn mượt)
-static int aimMissChance = 3; // % miss chance (0-10, giảm để aim mượt hơn)
-static bool aimOnlyVisible = YES; // Chỉ aim khi nhìn thấy enemy
-static float aimUpdateRate = 0.016f; // Update aim mỗi 16ms (~60fps, mượt như ESP)
-static NSTimeInterval lastAimUpdate = 0;
-
-// --- ESP Performance Config ---
-static float espUpdateRate = 0.016f; // Update ESP mỗi 16ms (~60fps)
-static NSTimeInterval lastESPUpdate = 0;
-static bool espCacheEnabled = YES; // Cache data để giảm memory reads
-
 @interface CustomSwitch : UIControl
 @property (nonatomic, assign, getter=isOn) BOOL on;
 @end
@@ -360,7 +348,7 @@ static bool espCacheEnabled = YES; // Cache data để giảm memory reads
     [aimTabContainer addSubview:distSlider];
 
 
-    // --- SETTING TAB (Anti-Detection) ---
+    // --- SETTING TAB (Empty for now) ---
     settingTabContainer = [[UIView alloc] initWithFrame:CGRectMake(15, 50, 440, 250)];
     settingTabContainer.backgroundColor = [UIColor blackColor];
     settingTabContainer.layer.borderColor = [UIColor whiteColor].CGColor;
@@ -368,67 +356,12 @@ static bool espCacheEnabled = YES; // Cache data để giảm memory reads
     settingTabContainer.layer.cornerRadius = 10;
     settingTabContainer.hidden = YES;
     [menuContainer addSubview:settingTabContainer];
-
+    
     UILabel *stTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, 10, 200, 20)];
-    stTitle.text = @"Anti-Detection";
+    stTitle.text = @"Settings";
     stTitle.textColor = [UIColor whiteColor];
     stTitle.font = [UIFont boldSystemFontOfSize:16];
     [settingTabContainer addSubview:stTitle];
-
-    UIView *stLine = [[UIView alloc] initWithFrame:CGRectMake(15, 35, 410, 1)];
-    stLine.backgroundColor = [UIColor whiteColor];
-    [settingTabContainer addSubview:stLine];
-
-    // Smooth Aim Slider
-    UILabel *smoothLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 50, 200, 20)];
-    smoothLabel.text = @"Smooth Aim:";
-    smoothLabel.textColor = [UIColor whiteColor];
-    smoothLabel.font = [UIFont systemFontOfSize:13];
-    [settingTabContainer addSubview:smoothLabel];
-
-    UISlider *smoothSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 75, 400, 20)];
-    smoothSlider.minimumValue = 0.2;
-    smoothSlider.maximumValue = 0.9;
-    smoothSlider.value = aimSmoothFactor;
-    smoothSlider.thumbTintColor = [UIColor whiteColor];
-    smoothSlider.minimumTrackTintColor = [UIColor greenColor];
-    [smoothSlider addTarget:self action:@selector(smoothChanged:) forControlEvents:UIControlEventValueChanged];
-    [settingTabContainer addSubview:smoothSlider];
-
-    // Miss Chance Slider
-    UILabel *missLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 110, 200, 20)];
-    missLabel.text = @"Miss Chance (%):";
-    missLabel.textColor = [UIColor whiteColor];
-    missLabel.font = [UIFont systemFontOfSize:13];
-    [settingTabContainer addSubview:missLabel];
-
-    UISlider *missSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 135, 400, 20)];
-    missSlider.minimumValue = 0;
-    missSlider.maximumValue = 10;
-    missSlider.value = aimMissChance;
-    missSlider.thumbTintColor = [UIColor whiteColor];
-    missSlider.minimumTrackTintColor = [UIColor redColor];
-    [missSlider addTarget:self action:@selector(missChanged:) forControlEvents:UIControlEventValueChanged];
-    [settingTabContainer addSubview:missSlider];
-
-    // Only Visible Toggle
-    [self addFeatureToView:settingTabContainer withTitle:@"Only Visible" atY:170 initialValue:aimOnlyVisible andAction:@selector(toggleOnlyVisible:)];
-
-    // Update Rate Slider
-    UILabel *rateLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 210, 200, 20)];
-    rateLabel.text = @"Update Rate (ms):";
-    rateLabel.textColor = [UIColor whiteColor];
-    rateLabel.font = [UIFont systemFontOfSize:13];
-    [settingTabContainer addSubview:rateLabel];
-
-    UISlider *rateSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 230, 400, 20)];
-    rateSlider.minimumValue = 16;
-    rateSlider.maximumValue = 100;
-    rateSlider.value = aimUpdateRate * 1000;
-    rateSlider.thumbTintColor = [UIColor whiteColor];
-    rateSlider.minimumTrackTintColor = [UIColor blueColor];
-    [rateSlider addTarget:self action:@selector(rateChanged:) forControlEvents:UIControlEventValueChanged];
-    [settingTabContainer addSubview:rateSlider];
 }
 
 - (void)tabChanged:(UIButton *)sender {
@@ -559,12 +492,6 @@ static bool espCacheEnabled = YES; // Cache data để giảm memory reads
 - (void)fovChanged:(UISlider *)sender { aimFov = sender.value; }
 - (void)distChanged:(UISlider *)sender { aimDistance = sender.value; }
 
-// Anti-Detection Handlers
-- (void)smoothChanged:(UISlider *)sender { aimSmoothFactor = sender.value; }
-- (void)missChanged:(UISlider *)sender { aimMissChance = (int)sender.value; }
-- (void)rateChanged:(UISlider *)sender { aimUpdateRate = sender.value / 1000.0f; }
-- (void)toggleOnlyVisible:(CustomSwitch *)sender { aimOnlyVisible = sender.isOn; }
-
 - (void)addLineRect:(CGRect)frame color:(UIColor *)color parent:(UIView *)parent {
     UIView *v = [[UIView alloc] initWithFrame:frame];
     v.backgroundColor = color;
@@ -651,22 +578,18 @@ static bool espCacheEnabled = YES; // Cache data để giảm memory reads
 
 - (void)updateFrame {
     if (!self.window) return;
-
-    // ESP chạy mỗi frame (60fps) để mượt, dính chặt player
-    NSTimeInterval now = CACurrentMediaTime();
-
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     for (CALayer *layer in self.drawingLayers) {
         [layer removeFromSuperlayer];
     }
     [self.drawingLayers removeAllObjects];
-
+    
     // Draw FOV Circle
     if (isAimbot) {
         float screenX = self.bounds.size.width / 2;
         float screenY = self.bounds.size.height / 2;
-
+        
         CAShapeLayer *circleLayer = [CAShapeLayer layer];
         UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:CGPointMake(screenX, screenY) radius:aimFov startAngle:0 endAngle:2 * M_PI clockwise:YES];
         circleLayer.path = path.CGPath;
@@ -675,10 +598,9 @@ static bool espCacheEnabled = YES; // Cache data để giảm memory reads
         circleLayer.lineWidth = 1.0;
         [self.drawingLayers addObject:circleLayer];
     }
-
-    // Render ESP mỗi frame để mượt, không delay
+    
     [self renderESPToLayers:self.drawingLayers];
-
+    
     for (CALayer *layer in self.drawingLayers) {
         [self.layer addSublayer:layer];
     }
@@ -720,14 +642,12 @@ Quaternion GetRotationToLocation(Vector3 targetLocation, float y_bias, Vector3 m
 void set_aim(uint64_t player, Quaternion rotation) {
     if (!isVaildPtr(player)) return;
     
-    // Anti-Detection: Sử dụng smooth aim thay vì set trực tiếp
-    set_aim_smooth(player, rotation, aimSmoothFactor);
+    WriteAddr<Quaternion>(player + 0x4D4, rotation);
 }
 
 bool get_IsFiring(uint64_t player) {
     if (!isVaildPtr(player)) return false;
-    // public bool UGCStartFiring; // 0x1F1 (Player)
-    bool fireState = ReadAddr<bool>(player + 0x1F1);
+    bool fireState = ReadAddr<bool>(player + 0x6E8);
     return fireState;
 }
 
@@ -735,12 +655,9 @@ bool get_IsFiring(uint64_t player) {
 bool get_IsVisible(uint64_t player) {
     if (!isVaildPtr(player)) return false;
     
-    // protected BitArrayBoolean DBBGJDEAKPM; // 0xA40 (Player) - ISVISIBLE flags
-    uint64_t visibleObj = ReadAddr<uint64_t>(player + 0xA40);
+    uint64_t visibleObj = ReadAddr<uint64_t>(player + 0x930);
     if (!isVaildPtr(visibleObj)) return false;
 
-    // BitArrayBoolean extends BitArray - m_Value (uint) at 0x10
-    // ISVISIBLE_CAMERA = 1 (bit 0)
     int visibleFlags = ReadAddr<int>(visibleObj + 0x10); 
     return (visibleFlags & 0x1) == 0;
 }
@@ -758,45 +675,42 @@ bool get_IsVisible(uint64_t player) {
 
     uint64_t myPawnObject = getLocalPlayer(match);
     if (!isVaildPtr(myPawnObject)) return;
-
-    // public Transform MainCameraTransform; // 0x380 (Player)
-    uint64_t mainCameraTransform = ReadAddr<uint64_t>(myPawnObject + 0x380);
+    
+    uint64_t mainCameraTransform = ReadAddr<uint64_t>(myPawnObject + 0x2B0);
     Vector3 myLocation = getPositionExt(mainCameraTransform);
-
-    // protected Dictionary<BHGGAEEHJCO, Player> NGFEHJMADOJ; // 0x128 (EMKJHAJNPDH)
-    uint64_t player = ReadAddr<uint64_t>(match + 0x128);
+    
+    uint64_t player = ReadAddr<uint64_t>(match + 0xC8);
     uint64_t tValue = ReadAddr<uint64_t>(player + 0x28);
     int coutValue = ReadAddr<int>(tValue + 0x18);
-
+    
     float *matrix = GetViewMatrix(camera);
     float viewWidth = self.bounds.size.width;
     float viewHeight = self.bounds.size.height;
     CGPoint screenCenter = CGPointMake(viewWidth / 2, viewHeight / 2);
 
-    // Đọc isFire 1 lần thay vì mỗi iteration (tối ưu performance)
-    bool isFire = get_IsFiring(myPawnObject);
-
     // Variables for Aimbot
     uint64_t bestTarget = 0;
     int minHP = 99999;
     bool isVis = false;
-
+    bool isFire = false;
+    
     for (int i = 0; i < coutValue; i++) {
         uint64_t PawnObject = ReadAddr<uint64_t>(tValue + 0x20 + 8 * i);
         if (!isVaildPtr(PawnObject)) continue;
 
         bool isLocalTeam = isLocalTeamMate(myPawnObject, PawnObject);
         if (isLocalTeam) continue;
-
+        
         int CurHP = get_CurHP(PawnObject);
-        if (CurHP <= 0) continue;
+        if (CurHP <= 0) continue; 
 
         Vector3 HeadPos     = getPositionExt(getHead(PawnObject));
-
+        isFire              = get_IsFiring(myPawnObject);
+        
         float dis = Vector3::Distance(myLocation, HeadPos);
         if (dis > 400.0f) continue;
 
-
+        
         if (isAimbot && dis <= aimDistance) {
             Vector3 w2sAim = WorldToScreen(HeadPos, matrix, viewWidth, viewHeight);
 
@@ -920,29 +834,13 @@ bool get_IsVisible(uint64_t player) {
     }
 
     if (isAimbot && isVaildPtr(bestTarget) && isFire) {
-        // Anti-Detection: Chỉ aim khi nhìn thấy enemy (nếu bật)
-        if (aimOnlyVisible && !isVis) {
-            return;
-        }
-
-        // Anti-Detection: Miss chance (giống người thật)
-        if ((rand() % 100) < aimMissChance) {
-            return;
-        }
-
-        // Aim mỗi frame (60fps) để mượt, dính chặt player - không delay
         Vector3 EnemyHead = getPositionExt(getHead(bestTarget));
-
-        // Anti-Detection: Random offset nhỏ (±0.05m) để aim mượt nhưng vẫn tự nhiên
-        Vector3 randomOffset = getRandomAimOffset();
-        EnemyHead.x += randomOffset.x * 0.3f;
-        EnemyHead.y += randomOffset.y * 0.3f;
-        EnemyHead.z += randomOffset.z * 0.2f;
 
         Quaternion targetLook = GetRotationToLocation(EnemyHead, 0.1f, myLocation);
 
-        // Anti-Detection: Sử dụng smooth aim (Slerp) với factor cao để mượt nhưng nhanh
         set_aim(myPawnObject, targetLook);
+        
+        
     }
 }
 
