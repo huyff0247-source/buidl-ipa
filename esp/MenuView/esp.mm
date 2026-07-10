@@ -642,7 +642,7 @@ Quaternion GetRotationToLocation(Vector3 targetLocation, float y_bias, Vector3 m
 void set_aim(uint64_t player, Quaternion rotation) {
     if (!isVaildPtr(player)) return;
     
-    WriteAddr<Quaternion>(player + 0x4D4, rotation);
+    WriteAddr<Quaternion>(player + 0x4E8, rotation);
 }
 
 bool get_IsFiring(uint64_t player) {
@@ -655,7 +655,7 @@ bool get_IsFiring(uint64_t player) {
 bool get_IsVisible(uint64_t player) {
     if (!isVaildPtr(player)) return false;
     
-    uint64_t visibleObj = ReadAddr<uint64_t>(player + 0x930);
+    uint64_t visibleObj = ReadAddr<uint64_t>(player + 0xA50);
     if (!isVaildPtr(visibleObj)) return false;
 
     int visibleFlags = ReadAddr<int>(visibleObj + 0x10); 
@@ -676,7 +676,7 @@ bool get_IsVisible(uint64_t player) {
     uint64_t myPawnObject = getLocalPlayer(match);
     if (!isVaildPtr(myPawnObject)) return;
     
-    uint64_t mainCameraTransform = ReadAddr<uint64_t>(myPawnObject + 0x2B0);
+    uint64_t mainCameraTransform = ReadAddr<uint64_t>(myPawnObject + 0x380);
     Vector3 myLocation = getPositionExt(mainCameraTransform);
     
     uint64_t player = ReadAddr<uint64_t>(match + 0xC8);
