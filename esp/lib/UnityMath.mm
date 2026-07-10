@@ -58,7 +58,8 @@ Vector3 getPositionExt(uint64_t transObj2) {
 }
 
 NSString *GetNickName(uint64_t PawnObject) {
-    uint64_t name = ReadAddr<uint64_t>(PawnObject + 0x358);
+    // public string OriginalNickName; // 0x430 (Player)
+    uint64_t name = ReadAddr<uint64_t>(PawnObject + 0x430);
     
     UTF8 PlayerName[32] = "";
     UTF16 buf16[16] = {0};
