@@ -655,7 +655,7 @@ bool get_IsFiring(uint64_t player) {
 bool get_IsVisible(uint64_t player) {
     if (!isVaildPtr(player)) return false;
     
-    uint64_t visibleObj = ReadAddr<uint64_t>(player + 0xA50);
+    uint64_t visibleObj = ReadAddr<uint64_t>(player + 0x930);
     if (!isVaildPtr(visibleObj)) return false;
 
     int visibleFlags = ReadAddr<int>(visibleObj + 0x10); 

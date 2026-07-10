@@ -18,17 +18,18 @@ uint64_t getLocalPlayer(uint64_t match) {
 
 uint64_t CameraMain(uint64_t matchgame) {
     uint64_t CameraControllerManager = ReadAddr<uint64_t>(matchgame + 0xD8);
+    // Camera BAGLCCLIOEK ở offset 0x20 (dump mới, cũ là 0x18)
     return ReadAddr<uint64_t>(CameraControllerManager + 0x20);
 }
 
 float* GetViewMatrix(uint64_t cameraMain) {
     uint64_t v1 = ReadAddr<uint64_t>(cameraMain + 0x10);
-    
+
     static float matrix[16];
     for (int i = 0; i < 16; i++) {
         matrix[i] = ReadAddr<float>(v1 + 0xD8 + i * 0x4);
     }
-    
+
     return matrix;
 }
 
@@ -37,74 +38,77 @@ uint64_t getTransNode(uint64_t BodyPart) {
 }
 
 uint64_t getHead(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x550); // protected ITransformNode HeadNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x630); // protected ITransformNode GOLAIKOPNJK (HeadNode)
     return getTransNode(BodyPart);
 }
 
 uint64_t getHip(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x558); // protected ITransformNode HipNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x638); // protected ITransformNode PEMOFNFCLFB (HipNode)
     return getTransNode(BodyPart);
 }
 
 uint64_t getLeftAnkle(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x588); // protected ITransformNode m_LeftAnkleNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x668); // protected ITransformNode HNFBCFKKCJP (LeftAnkleNode)
     return getTransNode(BodyPart);
 }
 
 uint64_t getRightAnkle(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x590); // protected ITransformNode m_RightAnkleNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x670); // protected ITransformNode BOHFCEHMJBD (RightAnkleNode)
     return getTransNode(BodyPart);
 }
 
 uint64_t getRightToeNode(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x5A0); // protected ITransformNode m_RightToeNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x680); // protected ITransformNode JLLMBADGKJP (RightToeNode)
     return getTransNode(BodyPart);
 }
 
 
 uint64_t getLeftShoulder(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x5B8); // protected ITransformNode m_LeftArmNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x6A0); // protected ITransformNode NBHOEOOCIIG (LeftArmNode)
     return getTransNode(BodyPart);
 }
 
 uint64_t getLeftElbow(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x5E0); // protected ITransformNode m_LeftForeArmNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x6C8); // protected ITransformNode KNBJLEHOPIL (LeftForeArmNode)
     return getTransNode(BodyPart);
 }
 
 uint64_t getLeftHand(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x5D0); // protected ITransformNode m_LeftHandNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x6B8); // protected ITransformNode PNPBBNDANEM (LeftHandNode)
     return getTransNode(BodyPart);
 }
 
 uint64_t getRightShoulder(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x5C0); // protected ITransformNode m_RightArmNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x6A8); // protected ITransformNode OEJFBHIIBBG (RightArmNode)
     return getTransNode(BodyPart);
 }
 
 uint64_t getRightElbow(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x5D8); // protected ITransformNode m_RightForeArmNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x6C0); // protected ITransformNode KMIANNCLNOJ (RightForeArmNode)
     return getTransNode(BodyPart);
 }
 
 uint64_t getRightHand(uint64_t player) {
-    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x5C8); // protected ITransformNode m_RightHandNode;
+    uint64_t BodyPart = ReadAddr<uint64_t>(player + 0x6B0); // protected ITransformNode DIHJDDNIJHP (RightHandNode)
     return getTransNode(BodyPart);
 }
 
 bool isLocalTeamMate(uint64_t localPlayer, uint64_t Player) {
+    // PlayerID struct ở offset 0x3A0 (dump mới, cũ là 0x2D0)
     COW_GamePlay_PlayerID_o myPlayerID = ReadAddr<COW_GamePlay_PlayerID_o>(localPlayer + 0x3A0);
     COW_GamePlay_PlayerID_o PlayerID = ReadAddr<COW_GamePlay_PlayerID_o>(Player + 0x3A0);
-    
+
     int myTeamID = myPlayerID.m_TeamID;
     int TeamID = PlayerID.m_TeamID;
-    
+
     return myTeamID == TeamID;
 }
 
 int GetDataUInt16(uint64_t player, int varID) {
+    // m_PRIDataPool ở offset 0x70 (dump mới, cũ là 0x68)
     uint64_t IPRIDataPool = ReadAddr<uint64_t>(player + 0x70);
     if (isVaildPtr(IPRIDataPool)) {
+        // m_Datas ở offset 0x10 (ReplicationDataPoolUnsafe) - giữ nguyên
         uint64_t v2 = ReadAddr<uint64_t>(IPRIDataPool + 0x10);
         uint64_t v4 = ReadAddr<uint64_t>(v2 + 0x8 * varID + 0x20);
         int v6 = ReadAddr<int>(v4 + 0x18);
