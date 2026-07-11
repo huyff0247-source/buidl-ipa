@@ -800,6 +800,61 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
         snprintf(g_debugStatus, sizeof(g_debugStatus), "LOI: view matrix NULL");
         return;
     }
+
+    // === TU DO OFFSET VIEW MATRIX (chay 1 lan) ===
+    // Ma tran doc tu 0xD8 dang SAI (row0 toan 0, W2S ra ~15000px).
+    // Quet offset quanh camera + v1, thu chieu dau dich[0], log offset nao
+    // cho toa do nam trong man hinh. Chi log offset "dep" de it nhieu.
+    {
+        static bool s_mtxScanDone = false;
+        if (!s_mtxScanDone && pawnCount > 0 && isVaildPtr(pawns[0])) {
+            s_mtxScanDone = true;
+            Vector3 hp = getPositionExt(getHead(pawns[0]));
+            float W = self.bounds.size.width, H = self.bounds.size.height;
+            ESPLog("MTXSCAN: bat dau. dichHead=(%.2f,%.2f,%.2f) view=(%.0fx%.0f)", hp.x, hp.y, hp.z, W, H);
+            uint64_t v1 = ReadAddr<uint64_t>(camera + 0x10);
+            // Nguon quet: camera truc tiep, va con tro v1.
+            uint64_t srcs[2] = { camera, v1 };
+            const char* srcName[2] = { "camera", "v1(camera+0x10)" };
+            for (int s = 0; s < 2; s++) {
+                uint64_t base = srcs[s];
+                if (!isVaildPtr(base)) continue;
+                for (uint64_t off = 0x0; off <= 0x600; off += 0x4) {
+                    float m[16];
+                    bool ok = true;
+                    for (int i = 0; i < 16; i++) {
+                        m[i] = ReadAddr<float>(base + off + i * 0x4);
+                        if (!isfinite(m[i]) || fabsf(m[i]) > 1e6f) { ok = false; break; }
+                    }
+                    if (!ok) continue;
+                    // Thu 2 kieu layout: row-major (nhu WorldToScreen hien tai) va transpose.
+                    for (int mode = 0; mode < 2; mode++) {
+                        float c0,c1,c2,c3, r0,r1,r2,r3;
+                        if (mode == 0) {
+                            // w = m3*x+m7*y+m11*z+m15 ; x-row = m0,m4,m8,m12 ; y-row = m1,m5,m9,m13
+                            c0=m[0]; c1=m[4]; c2=m[8];  c3=m[12];
+                            r0=m[1]; r1=m[5]; r2=m[9];  r3=m[13];
+                            float w = m[3]*hp.x + m[7]*hp.y + m[11]*hp.z + m[15];
+                            if (w < 1.0f) continue;
+                            float sx = W/2 + (c0*hp.x + c1*hp.y + c2*hp.z + c3)/w*(W/2);
+                            float sy = H/2 - (r0*hp.x + r1*hp.y + r2*hp.z + r3)/w*(H/2);
+                            if (sx >= 0 && sx <= W && sy >= 0 && sy <= H)
+                                ESPLog("MTXSCAN HIT %s+0x%llx mode=row w=%.2f screen=(%.1f,%.1f)", srcName[s], (unsigned long long)off, w, sx, sy);
+                        } else {
+                            // transpose: w = m12*x+m13*y+m14*z+m15 ; x-row=m0..m3 ; y-row=m4..m7
+                            float w = m[12]*hp.x + m[13]*hp.y + m[14]*hp.z + m[15];
+                            if (w < 1.0f) continue;
+                            float sx = W/2 + (m[0]*hp.x + m[1]*hp.y + m[2]*hp.z + m[3])/w*(W/2);
+                            float sy = H/2 - (m[4]*hp.x + m[5]*hp.y + m[6]*hp.z + m[7])/w*(H/2);
+                            if (sx >= 0 && sx <= W && sy >= 0 && sy <= H)
+                                ESPLog("MTXSCAN HIT %s+0x%llx mode=transpose w=%.2f screen=(%.1f,%.1f)", srcName[s], (unsigned long long)off, w, sx, sy);
+                        }
+                    }
+                }
+            }
+            ESPLog("MTXSCAN: xong.");
+        }
+    }
     
     g_playerCount = coutValue;
     snprintf(g_debugStatus, sizeof(g_debugStatus), "OK: doc memory thanh cong! mBase=0x%llx", Moudule_Base);
