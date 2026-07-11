@@ -25,8 +25,11 @@ static bool isPlayerCount = YES; // Dem so player song xung quanh (hien giua-tre
 
 // --- Aimbot Config ---
 static bool isAimbot = NO;
-static float aimFov = 150.0f; // Bán kính vòng tròn FOV
-static float aimDistance = 200.0f; // Khoảng cách aim mặc định
+static float aimFov = 150.0f;      // Ban kinh vong tron FOV (px)
+static float aimDistance = 200.0f; // Khoang cach aim toi da (m)
+static int   aimBone = 0;          // 0 = Head, 1 = Neck, 2 = Hip
+static float aimSpeed = 0.5f;      // Toc do aim (0.05 muot cham -> 1.0 tuc thi)
+static bool  aimOnlyFire = YES;    // Chi aim khi dang ban
 
 @interface CustomSwitch : UIControl
 @property (nonatomic, assign, getter=isOn) BOOL on;
@@ -95,6 +98,10 @@ static float aimDistance = 200.0f; // Khoảng cách aim mặc định
     UIView *skeletonContainer;
     
     float previewScale;
+
+    UILabel *fovValueLabel;
+    UILabel *distValueLabel;
+    UILabel *speedValueLabel;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -321,16 +328,42 @@ static float aimDistance = 200.0f; // Khoảng cách aim mặc định
     aimLine.backgroundColor = [UIColor whiteColor];
     [aimTabContainer addSubview:aimLine];
     
-    [self addFeatureToView:aimTabContainer withTitle:@"Enable Aimbot" atY:45 initialValue:isAimbot andAction:@selector(toggleAimbot:)];
-    
-    // FOV Slider
-    UILabel *fovLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 85, 200, 20)];
-    fovLabel.text = @"FOV Radius:";
+    [self addFeatureToView:aimTabContainer withTitle:@"Enable Aimbot" atY:42 initialValue:isAimbot andAction:@selector(toggleAimbot:)];
+    [self addFeatureToView:aimTabContainer withTitle:@"Only When Firing" atY:74 initialValue:aimOnlyFire andAction:@selector(toggleAimOnlyFire:)];
+
+    // Aim Bone selector (Head / Neck / Hip)
+    UILabel *boneLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 108, 90, 24)];
+    boneLabel.text = @"Aim Bone:";
+    boneLabel.textColor = [UIColor whiteColor];
+    boneLabel.font = [UIFont systemFontOfSize:13];
+    [aimTabContainer addSubview:boneLabel];
+
+    UISegmentedControl *boneSeg = [[UISegmentedControl alloc] initWithItems:@[@"Head", @"Neck", @"Hip"]];
+    boneSeg.frame = CGRectMake(110, 106, 310, 28);
+    boneSeg.selectedSegmentIndex = aimBone;
+    boneSeg.tintColor = [UIColor whiteColor];
+    if (@available(iOS 13.0, *)) {
+        boneSeg.selectedSegmentTintColor = [UIColor colorWithRed:0.0 green:0.7 blue:0.0 alpha:1.0];
+        [boneSeg setTitleTextAttributes:@{NSForegroundColorAttributeName:[UIColor whiteColor]} forState:UIControlStateNormal];
+    }
+    [boneSeg addTarget:self action:@selector(boneChanged:) forControlEvents:UIControlEventValueChanged];
+    [aimTabContainer addSubview:boneSeg];
+
+    // FOV Slider (co hien gia tri)
+    UILabel *fovLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 142, 300, 18)];
+    fovLabel.text = @"FOV Radius (px):";
     fovLabel.textColor = [UIColor whiteColor];
     fovLabel.font = [UIFont systemFontOfSize:13];
     [aimTabContainer addSubview:fovLabel];
-    
-    UISlider *fovSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 110, 400, 20)];
+
+    fovValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(325, 142, 95, 18)];
+    fovValueLabel.text = [NSString stringWithFormat:@"%.0f", aimFov];
+    fovValueLabel.textColor = [UIColor redColor];
+    fovValueLabel.textAlignment = NSTextAlignmentRight;
+    fovValueLabel.font = [UIFont boldSystemFontOfSize:13];
+    [aimTabContainer addSubview:fovValueLabel];
+
+    UISlider *fovSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 162, 405, 20)];
     fovSlider.minimumValue = 10.0;
     fovSlider.maximumValue = 400.0;
     fovSlider.value = aimFov;
@@ -338,15 +371,22 @@ static float aimDistance = 200.0f; // Khoảng cách aim mặc định
     fovSlider.minimumTrackTintColor = [UIColor redColor];
     [fovSlider addTarget:self action:@selector(fovChanged:) forControlEvents:UIControlEventValueChanged];
     [aimTabContainer addSubview:fovSlider];
-    
-    // Distance Slider
-    UILabel *distLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 145, 200, 20)];
+
+    // Distance Slider (co hien gia tri)
+    UILabel *distLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 186, 300, 18)];
     distLabel.text = @"Aim Distance (m):";
     distLabel.textColor = [UIColor whiteColor];
     distLabel.font = [UIFont systemFontOfSize:13];
     [aimTabContainer addSubview:distLabel];
-    
-    UISlider *distSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 170, 400, 20)];
+
+    distValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(325, 186, 95, 18)];
+    distValueLabel.text = [NSString stringWithFormat:@"%.0f", aimDistance];
+    distValueLabel.textColor = [UIColor cyanColor];
+    distValueLabel.textAlignment = NSTextAlignmentRight;
+    distValueLabel.font = [UIFont boldSystemFontOfSize:13];
+    [aimTabContainer addSubview:distValueLabel];
+
+    UISlider *distSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 206, 405, 20)];
     distSlider.minimumValue = 10.0;
     distSlider.maximumValue = 500.0;
     distSlider.value = aimDistance;
@@ -354,6 +394,29 @@ static float aimDistance = 200.0f; // Khoảng cách aim mặc định
     distSlider.minimumTrackTintColor = [UIColor blueColor];
     [distSlider addTarget:self action:@selector(distChanged:) forControlEvents:UIControlEventValueChanged];
     [aimTabContainer addSubview:distSlider];
+
+    // Aim Speed Slider (co hien gia tri)
+    UILabel *speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 228, 300, 18)];
+    speedLabel.text = @"Aim Speed:";
+    speedLabel.textColor = [UIColor whiteColor];
+    speedLabel.font = [UIFont systemFontOfSize:13];
+    [aimTabContainer addSubview:speedLabel];
+
+    speedValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(325, 228, 95, 18)];
+    speedValueLabel.text = [NSString stringWithFormat:@"%.2f", aimSpeed];
+    speedValueLabel.textColor = [UIColor greenColor];
+    speedValueLabel.textAlignment = NSTextAlignmentRight;
+    speedValueLabel.font = [UIFont boldSystemFontOfSize:13];
+    [aimTabContainer addSubview:speedValueLabel];
+
+    UISlider *speedSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 246, 405, 20)];
+    speedSlider.minimumValue = 0.05;
+    speedSlider.maximumValue = 1.0;
+    speedSlider.value = aimSpeed;
+    speedSlider.thumbTintColor = [UIColor whiteColor];
+    speedSlider.minimumTrackTintColor = [UIColor greenColor];
+    [speedSlider addTarget:self action:@selector(speedChanged:) forControlEvents:UIControlEventValueChanged];
+    [aimTabContainer addSubview:speedSlider];
 
 
     // --- SETTING TAB (Empty for now) ---
@@ -502,9 +565,22 @@ static float aimDistance = 200.0f; // Khoảng cách aim mặc định
 - (void)toggleDist:(CustomSwitch *)sender { isDis = sender.isOn; previewDistLabel.hidden = !isDis; }
 - (void)togglePlayerCount:(CustomSwitch *)sender { isPlayerCount = sender.isOn; }
 - (void)toggleAimbot:(CustomSwitch *)sender { isAimbot = sender.isOn; }
+- (void)toggleAimOnlyFire:(CustomSwitch *)sender { aimOnlyFire = sender.isOn; }
 
-- (void)fovChanged:(UISlider *)sender { aimFov = sender.value; }
-- (void)distChanged:(UISlider *)sender { aimDistance = sender.value; }
+- (void)boneChanged:(UISegmentedControl *)sender { aimBone = (int)sender.selectedSegmentIndex; }
+
+- (void)fovChanged:(UISlider *)sender {
+    aimFov = sender.value;
+    fovValueLabel.text = [NSString stringWithFormat:@"%.0f", aimFov];
+}
+- (void)distChanged:(UISlider *)sender {
+    aimDistance = sender.value;
+    distValueLabel.text = [NSString stringWithFormat:@"%.0f", aimDistance];
+}
+- (void)speedChanged:(UISlider *)sender {
+    aimSpeed = sender.value;
+    speedValueLabel.text = [NSString stringWithFormat:@"%.2f", aimSpeed];
+}
 
 - (void)addLineRect:(CGRect)frame color:(UIColor *)color parent:(UIView *)parent {
     UIView *v = [[UIView alloc] initWithFrame:frame];
@@ -601,7 +677,7 @@ static float aimDistance = 200.0f; // Khoảng cách aim mặc định
     }
     [self.drawingLayers removeAllObjects];
     
-    // Draw FOV Circle
+    // Draw FOV Circle + hien thi so (FOV / khoang cach aim)
     if (isAimbot) {
         float screenX = self.bounds.size.width / 2;
         float screenY = self.bounds.size.height / 2;
@@ -613,6 +689,18 @@ static float aimDistance = 200.0f; // Khoảng cách aim mặc định
         circleLayer.strokeColor = [UIColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:0.5].CGColor;
         circleLayer.lineWidth = 1.0;
         [self.drawingLayers addObject:circleLayer];
+
+        // So o chinh giua vong FOV: "FOV | Distance"
+        CATextLayer *fovInfo = [CATextLayer layer];
+        NSArray *boneNames = @[@"Head", @"Neck", @"Hip"];
+        NSString *boneName = (aimBone >= 0 && aimBone < 3) ? boneNames[aimBone] : @"Head";
+        fovInfo.string = [NSString stringWithFormat:@"FOV %.0f | %.0fm | %@", aimFov, aimDistance, boneName];
+        fovInfo.fontSize = 11;
+        fovInfo.alignmentMode = kCAAlignmentCenter;
+        fovInfo.foregroundColor = [UIColor colorWithRed:1.0 green:1.0 blue:0.4 alpha:0.9].CGColor;
+        fovInfo.contentsScale = [UIScreen mainScreen].scale;
+        fovInfo.frame = CGRectMake(screenX - 90, screenY - aimFov - 16, 180, 14);
+        [self.drawingLayers addObject:fovInfo];
     }
     
     [self renderESPToLayers:self.drawingLayers];
@@ -655,10 +743,38 @@ Quaternion GetRotationToLocation(Vector3 targetLocation, float y_bias, Vector3 m
     return Quaternion::LookRotation((targetLocation + Vector3(0, y_bias, 0)) - myLoc, Vector3(0, 1, 0));
 }
 
-void set_aim(uint64_t player, Quaternion rotation) {
+// Lay toa do bone can aim theo lua chon (0=Head, 1=Neck, 2=Hip)
+static Vector3 getAimBonePos(uint64_t player, int bone) {
+    if (bone == 2) {
+        return getPositionExt(getHip(player));
+    }
+    Vector3 head = getPositionExt(getHead(player));
+    if (bone == 1) {
+        // Neck ~ diem giua head va hip, thien ve head
+        Vector3 hip = getPositionExt(getHip(player));
+        return head * 0.8f + hip * 0.2f;
+    }
+    return head; // Head
+}
+
+// Ghi aim rotation, lam muot theo speed (Slerp tu huong hien tai -> huong dich).
+void set_aim(uint64_t player, Quaternion rotation, float speed) {
     if (!isVaildPtr(player)) return;
-    
-    WriteAddr<Quaternion>(player + Off::AimRotation, rotation);
+
+    if (speed >= 0.999f) {
+        WriteAddr<Quaternion>(player + Off::AimRotation, rotation);
+        return;
+    }
+    if (speed < 0.02f) speed = 0.02f;
+
+    Quaternion current = ReadAddr<Quaternion>(player + Off::AimRotation);
+    float mag = current.x*current.x + current.y*current.y + current.z*current.z + current.w*current.w;
+    if (!isfinite(mag) || mag < 0.001f) {
+        WriteAddr<Quaternion>(player + Off::AimRotation, rotation);
+        return;
+    }
+    Quaternion smooth = Quaternion::Slerp(current, rotation, speed);
+    WriteAddr<Quaternion>(player + Off::AimRotation, smooth);
 }
 
 bool get_IsFiring(uint64_t player) {
@@ -895,10 +1011,14 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
 
     // Variables for Aimbot
     uint64_t bestTarget = 0;
-    int minHP = 99999;
+    float bestScore = 1e18f;   // score cang nho cang tot (px toi tam FOV, hoac m)
     bool isVis = false;
-    bool isFire = false;
-    
+    bool isFire = get_IsFiring(myPawnObject);
+
+    // Ma tran view co hop le khong? (neu hong thi W2S/FOV filter khong dung duoc,
+    // fallback chon dich gan nhat theo khoang cach 3D).
+    bool matrixValid = (fabsf(matrix[0]) > 1e-6f || fabsf(matrix[1]) > 1e-6f || fabsf(matrix[2]) > 1e-6f);
+
     bool w2sLoggedThisFrame = false;
     for (int i = 0; i < coutValue; i++) {
         uint64_t PawnObject = pawns[i];
@@ -913,28 +1033,32 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
         playersAround++; // dich con song hop le -> tinh vao so xung quanh
 
         Vector3 HeadPos     = getPositionExt(getHead(PawnObject));
-        isFire              = get_IsFiring(myPawnObject);
-        
+
         float dis = Vector3::Distance(myLocation, HeadPos);
         if (dis > 400.0f) continue;
 
-        
+        // === Chon target aimbot ===
         if (isAimbot && dis <= aimDistance) {
-            Vector3 w2sAim = WorldToScreen(HeadPos, matrix, viewWidth, viewHeight);
-
-            float deltaX = w2sAim.x - screenCenter.x;
-            float deltaY = w2sAim.y - screenCenter.y;
-            float distanceFromCenter = sqrt(deltaX * deltaX + deltaY * deltaY);
-            
-            if (distanceFromCenter <= aimFov) {
-                if (CurHP < minHP) {
-                    minHP = CurHP;
-                    
+            if (matrixValid) {
+                // Ma tran OK -> chon dich gan tam ngam nhat trong vong FOV.
+                Vector3 aimW = getAimBonePos(PawnObject, aimBone);
+                Vector3 w2sAim = WorldToScreen(aimW, matrix, viewWidth, viewHeight);
+                float deltaX = w2sAim.x - screenCenter.x;
+                float deltaY = w2sAim.y - screenCenter.y;
+                float distanceFromCenter = sqrtf(deltaX * deltaX + deltaY * deltaY);
+                if (distanceFromCenter <= aimFov && distanceFromCenter < bestScore) {
+                    bestScore = distanceFromCenter;
+                    isVis = get_IsVisible(PawnObject);
+                    bestTarget = PawnObject;
+                }
+            } else {
+                // Ma tran hong -> fallback: chon dich gan nhat theo khoang cach 3D.
+                if (dis < bestScore) {
+                    bestScore = dis;
                     isVis = get_IsVisible(PawnObject);
                     bestTarget = PawnObject;
                 }
             }
-            
         }
 
         if (dis > 220.0f) continue; 
@@ -1054,20 +1178,20 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
         cntLayer.string = [NSString stringWithFormat:@"%d", playersAround];
         cntLayer.fontSize = 24;
         cntLayer.alignmentMode = kCAAlignmentCenter;
-        cntLayer.frame = CGRectMake(viewWidth / 2 - 50, 8, 100, 30);
+        cntLayer.frame = CGRectMake(viewWidth / 2 - 50, 40, 100, 30);
         cntLayer.foregroundColor = [UIColor whiteColor].CGColor;
         cntLayer.contentsScale = [UIScreen mainScreen].scale;
         [layers addObject:cntLayer];
     }
 
-    if (isAimbot && isVaildPtr(bestTarget) && isFire) {
-        Vector3 EnemyHead = getPositionExt(getHead(bestTarget));
+    if (isAimbot && isVaildPtr(bestTarget) && (!aimOnlyFire || isFire)) {
+        Vector3 aimTarget = getAimBonePos(bestTarget, aimBone);
 
-        Quaternion targetLook = GetRotationToLocation(EnemyHead, 0.1f, myLocation);
+        // Head can chinh len 1 chut cho khop tam; Neck/Hip ban thang.
+        float yBias = (aimBone == 0) ? 0.1f : 0.0f;
+        Quaternion targetLook = GetRotationToLocation(aimTarget, yBias, myLocation);
 
-        set_aim(myPawnObject, targetLook);
-        
-        
+        set_aim(myPawnObject, targetLook, aimSpeed);
     }
 }
 
