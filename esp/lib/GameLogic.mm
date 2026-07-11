@@ -60,14 +60,14 @@ uint64_t CameraMain(uint64_t matchgame) {
 }
 
 float* GetViewMatrix(uint64_t cameraMain) {
-    uint64_t v1 = ReadAddr<uint64_t>(cameraMain + Off::Camera_ViewMatrixPtr);
-    ESPLog("GetViewMatrix: v1=0x%llx", v1);
-
+    // Ma tran View-Projection nam TRUC TIEP tren camera object tai offset 0x444
+    // (mode row), da xac dinh bang MTXSCAN (score 20/20, spread 619px).
+    // Cach cu (camera+0x10 -> +0xD8) doc ra ma tran rac (row0=[0 0 0 0]) -> bo.
     static float matrix[16];
     for (int i = 0; i < 16; i++) {
-        matrix[i] = ReadAddr<float>(v1 + Off::ViewMatrix_Offset + i * 0x4);
+        matrix[i] = ReadAddr<float>(cameraMain + Off::Camera_ViewMatrixDirect + i * 0x4);
     }
-
+    ESPLog("GetViewMatrix: cam+0x%llx m0=%.3f m5=%.3f", (unsigned long long)Off::Camera_ViewMatrixDirect, matrix[0], matrix[5]);
     return matrix;
 }
 

@@ -911,7 +911,11 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
     static int      s_vmMode  = 0;   // 0 = row, 1 = transpose
     {
         float W = self.bounds.size.width, H = self.bounds.size.height;
-        if (!s_vmFound && W > 300 && pawnCount > 0) {
+        // GetViewMatrix nay doc thang camera+0x444 (da dung). MTXSCAN chi la LUOI
+        // AN TOAN: chi quet khi ma tran van hong (matrix[0..2] deu ~0), vi du
+        // game update doi offset. Ma tran OK -> bo qua scan (khong ton CPU).
+        bool mtxBroken = (fabsf(matrix[0]) < 1e-6f && fabsf(matrix[1]) < 1e-6f && fabsf(matrix[2]) < 1e-6f);
+        if (!s_vmFound && mtxBroken && W > 300 && pawnCount > 0) {
             Vector3 heads[32];
             int nHeads = 0;
             for (int i = 0; i < pawnCount && nHeads < 32; i++) {

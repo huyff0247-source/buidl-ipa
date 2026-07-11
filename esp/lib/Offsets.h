@@ -11,6 +11,7 @@ namespace Off {
     constexpr uint64_t AimRotation                = 0x4E8;  // Player.MJALKGNKGOA  (private Quaternion)
     constexpr uint64_t Array_DataStart            = 0x20;  // manual
     constexpr uint64_t CameraCtrlMgr_Camera       = 0x20;  // manual
+    constexpr uint64_t Camera_ViewMatrixDirect    = 0x444;  // manual
     constexpr uint64_t Camera_ViewMatrixPtr       = 0x10;  // manual
     constexpr uint64_t DictKeyByte_Stride         = 0x18;  // manual
     constexpr uint64_t DictKeyByte_ValOff         = 0x10;  // manual
