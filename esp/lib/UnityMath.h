@@ -31,6 +31,10 @@ struct COW_GamePlay_PlayerID_o {
 
 Vector3 WorldToScreen(Vector3 obj, float *matrix, float screenX, float screenY);
 Vector3 getPositionExt(uint64_t transObj2);
+Quaternion getRotationExt(uint64_t transObj2);
+// Dung ma tran View-Projection thu cong tu vi tri + xoay camera + FOV (dong, row-major
+// tuong thich WorldToScreen). fovVertDeg = FOV doc (vertical), aspect = W/H.
+void BuildViewMatrix(Vector3 eye, Quaternion camRot, float fovVertDeg, float aspect, float *outMatrix);
 NSString *GetNickName(uint64_t PawnObject);
 
 #endif

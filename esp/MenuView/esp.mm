@@ -22,6 +22,8 @@ static bool isHealth = YES;
 static bool isName = YES;
 static bool isDis = YES;
 static bool isPlayerCount = YES; // Dem so player song xung quanh (hien giua-tren man hinh)
+static float espDistance = 220.0f; // Khoang cach hien ESP box/bone (m)
+static float camFov = 60.0f; // FOV doc (vertical, deg) de dung ma tran W2S - chinh cho khop game
 
 // --- Aimbot Config ---
 static bool isAimbot = NO;
@@ -102,6 +104,8 @@ static bool  aimOnlyFire = YES;    // Chi aim khi dang ban
     UILabel *fovValueLabel;
     UILabel *distValueLabel;
     UILabel *speedValueLabel;
+    UILabel *espDistValueLabel;
+    UILabel *camFovValueLabel;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -439,6 +443,52 @@ static bool  aimOnlyFire = YES;    // Chi aim khi dang ban
     stLine.backgroundColor = [UIColor whiteColor];
     [settingTabContainer addSubview:stLine];
     [self addFeatureToView:settingTabContainer withTitle:@"Enemy Count (top)" atY:45 initialValue:isPlayerCount andAction:@selector(togglePlayerCount:)];
+
+    // ESP Distance Slider (khoang cach hien box/bone)
+    UILabel *espDistLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 90, 300, 16)];
+    espDistLabel.text = @"ESP Distance (m):";
+    espDistLabel.textColor = [UIColor whiteColor];
+    espDistLabel.font = [UIFont systemFontOfSize:13];
+    [settingTabContainer addSubview:espDistLabel];
+
+    espDistValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(320, 90, 100, 16)];
+    espDistValueLabel.text = [NSString stringWithFormat:@"%.0f", espDistance];
+    espDistValueLabel.textColor = [UIColor greenColor];
+    espDistValueLabel.textAlignment = NSTextAlignmentRight;
+    espDistValueLabel.font = [UIFont boldSystemFontOfSize:13];
+    [settingTabContainer addSubview:espDistValueLabel];
+
+    UISlider *espDistSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 110, 405, 20)];
+    espDistSlider.minimumValue = 20.0;
+    espDistSlider.maximumValue = 500.0;
+    espDistSlider.value = espDistance;
+    espDistSlider.thumbTintColor = [UIColor whiteColor];
+    espDistSlider.minimumTrackTintColor = [UIColor greenColor];
+    [espDistSlider addTarget:self action:@selector(espDistChanged:) forControlEvents:UIControlEventValueChanged];
+    [settingTabContainer addSubview:espDistSlider];
+
+    // Camera FOV Slider (chinh cho ma tran W2S khop game - dung vi tri box)
+    UILabel *camFovLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 140, 300, 16)];
+    camFovLabel.text = @"Camera FOV (deg):";
+    camFovLabel.textColor = [UIColor whiteColor];
+    camFovLabel.font = [UIFont systemFontOfSize:13];
+    [settingTabContainer addSubview:camFovLabel];
+
+    camFovValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(320, 140, 100, 16)];
+    camFovValueLabel.text = [NSString stringWithFormat:@"%.1f", camFov];
+    camFovValueLabel.textColor = [UIColor greenColor];
+    camFovValueLabel.textAlignment = NSTextAlignmentRight;
+    camFovValueLabel.font = [UIFont boldSystemFontOfSize:13];
+    [settingTabContainer addSubview:camFovValueLabel];
+
+    UISlider *camFovSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 160, 405, 20)];
+    camFovSlider.minimumValue = 20.0;
+    camFovSlider.maximumValue = 120.0;
+    camFovSlider.value = camFov;
+    camFovSlider.thumbTintColor = [UIColor whiteColor];
+    camFovSlider.minimumTrackTintColor = [UIColor greenColor];
+    [camFovSlider addTarget:self action:@selector(camFovChanged:) forControlEvents:UIControlEventValueChanged];
+    [settingTabContainer addSubview:camFovSlider];
 }
 
 - (void)tabChanged:(UIButton *)sender {
@@ -565,6 +615,14 @@ static bool  aimOnlyFire = YES;    // Chi aim khi dang ban
 - (void)toggleName:(CustomSwitch *)sender { isName = sender.isOn; previewNameLabel.hidden = !isName; }
 - (void)toggleDist:(CustomSwitch *)sender { isDis = sender.isOn; previewDistLabel.hidden = !isDis; }
 - (void)togglePlayerCount:(CustomSwitch *)sender { isPlayerCount = sender.isOn; }
+- (void)espDistChanged:(UISlider *)sender {
+    espDistance = sender.value;
+    espDistValueLabel.text = [NSString stringWithFormat:@"%.0f", espDistance];
+}
+- (void)camFovChanged:(UISlider *)sender {
+    camFov = sender.value;
+    camFovValueLabel.text = [NSString stringWithFormat:@"%.1f", camFov];
+}
 - (void)toggleAimbot:(CustomSwitch *)sender { isAimbot = sender.isOn; }
 - (void)toggleAimOnlyFire:(CustomSwitch *)sender { aimOnlyFire = sender.isOn; }
 
@@ -885,138 +943,28 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
     }
     int coutValue = pawnCount;
     
-    float *matrix = GetViewMatrix(camera);
-    if (matrix) {
+// === DUNG MA TRAN VIEW-PROJECTION THU CONG (external, tat dinh) ===
+    // Ly do: HUD la process rieng (task_for_pid + vm_read), KHONG inject vao game
+    // nen KHONG goi duoc ham WorldToScreenPoint/get_*Matrix cua Unity. Ma tran doc
+    // tho tu offset (0x444...) KHONG on dinh giua cac phien. => Tu dung ma tran tu:
+    //   - vi tri camera (myLocation, da doc chuan qua getPositionExt)
+    //   - xoay camera (getRotationExt cung transform hierarchy)
+    //   - FOV (camFov, chinh bang slider trong game cho khop)
+    static float matrix[16];
+    {
+        float aspect = 1.0f;
+        if (self.bounds.size.height > 1.0f)
+            aspect = self.bounds.size.width / self.bounds.size.height;
+        Quaternion camRot = getRotationExt(mainCameraTransform);
+        BuildViewMatrix(myLocation, camRot, camFov, aspect, matrix);
+        ESPLog("render: camRot=(%.3f,%.3f,%.3f,%.3f) fov=%.1f aspect=%.3f",
+               camRot.x, camRot.y, camRot.z, camRot.w, camFov, aspect);
         ESPLog("render: VM row0=[%.3f %.3f %.3f %.3f]", matrix[0], matrix[1], matrix[2], matrix[3]);
         ESPLog("render: VM row1=[%.3f %.3f %.3f %.3f]", matrix[4], matrix[5], matrix[6], matrix[7]);
-        ESPLog("render: VM row2=[%.3f %.3f %.3f %.3f]", matrix[8], matrix[9], matrix[10], matrix[11]);
         ESPLog("render: VM row3=[%.3f %.3f %.3f %.3f]", matrix[12], matrix[13], matrix[14], matrix[15]);
-    } else {
-        ESPLog("render: viewMatrix=NULL");
-    }
-    if (matrix == NULL) {
-        snprintf(g_debugStatus, sizeof(g_debugStatus), "LOI: view matrix NULL");
-        return;
     }
 
-    // === TU DONG DO + AP DUNG OFFSET VIEW MATRIX ===
-    // Van de: doc tu offset 0xD8 ra ma tran rac (row0=[0 0 0 0]) -> W2S sai vi tri.
-    // Giai phap: quet cac offset tren camera & v1, cham diem theo so dich chieu
-    // dung + do phan tan (loai ma tran rac chum ve 1 diem). Tim duoc thi LUU lai
-    // va AP DUNG ngay cho matrix (khong can build lai). Chay lai moi frame den khi
-    // tim duoc (can >=3 dich de dang tin cay).
-    static bool     s_vmFound = false;
-    static int      s_vmSrc   = 0;   // 0 = camera, 1 = v1
-    static uint64_t s_vmOff   = 0;
-    static int      s_vmMode  = 0;   // 0 = row, 1 = transpose
-    {
-        float W = self.bounds.size.width, H = self.bounds.size.height;
-        // GetViewMatrix nay doc thang camera+0x444 (da dung). MTXSCAN chi la LUOI
-        // AN TOAN: chi quet khi ma tran van hong (matrix[0..2] deu ~0), vi du
-        // game update doi offset. Ma tran OK -> bo qua scan (khong ton CPU).
-        bool mtxBroken = (fabsf(matrix[0]) < 1e-6f && fabsf(matrix[1]) < 1e-6f && fabsf(matrix[2]) < 1e-6f);
-        if (!s_vmFound && mtxBroken && W > 300 && pawnCount > 0) {
-            Vector3 heads[32];
-            int nHeads = 0;
-            for (int i = 0; i < pawnCount && nHeads < 32; i++) {
-                if (!isVaildPtr(pawns[i])) continue;
-                if (isLocalTeamMate(myPawnObject, pawns[i])) continue; // bo dong doi
-                Vector3 hp = getPositionExt(getHead(pawns[i]));
-                if (!isfinite(hp.x) || !isfinite(hp.y) || !isfinite(hp.z)) continue;
-                heads[nHeads++] = hp;
-            }
-
-            if (nHeads >= 3) {
-                uint64_t v1 = ReadAddr<uint64_t>(camera + Off::Camera_ViewMatrixPtr);
-                uint64_t srcs[2] = { camera, v1 };
-                const char* srcName[2] = { "camera", "v1" };
-
-                int      bScore = 0;
-                float    bSpread = 0.0f;
-                uint64_t bOff = 0; int bSrc = 0, bMode = 0;
-
-                for (int sIdx = 0; sIdx < 2; sIdx++) {
-                    uint64_t base = srcs[sIdx];
-                    if (!isVaildPtr(base)) continue;
-                    for (uint64_t off = 0x0; off <= 0x600; off += 0x4) {
-                        float m[16];
-                        bool ok = true;
-                        for (int k = 0; k < 16; k++) {
-                            m[k] = ReadAddr<float>(base + off + k * 0x4);
-                            if (!isfinite(m[k]) || fabsf(m[k]) > 1e6f) { ok = false; break; }
-                        }
-                        if (!ok) continue;
-
-                        for (int mode = 0; mode < 2; mode++) {
-                            int score = 0;
-                            float minx=1e9f,maxx=-1e9f,miny=1e9f,maxy=-1e9f;
-                            for (int h = 0; h < nHeads; h++) {
-                                Vector3 p = heads[h];
-                                float w, xn, yn;
-                                if (mode == 0) {
-                                    w  = m[3]*p.x + m[7]*p.y + m[11]*p.z + m[15];
-                                    xn = m[0]*p.x + m[4]*p.y + m[8]*p.z + m[12];
-                                    yn = m[1]*p.x + m[5]*p.y + m[9]*p.z + m[13];
-                                } else {
-                                    w  = m[12]*p.x + m[13]*p.y + m[14]*p.z + m[15];
-                                    xn = m[0]*p.x + m[1]*p.y + m[2]*p.z + m[3];
-                                    yn = m[4]*p.x + m[5]*p.y + m[6]*p.z + m[7];
-                                }
-                                if (w < 1.0f || w > 100000.0f) continue;
-                                float sx = W/2 + xn/w*(W/2);
-                                float sy = H/2 - yn/w*(H/2);
-                                if (sx >= 0 && sx <= W && sy >= 0 && sy <= H) {
-                                    score++;
-                                    if (sx<minx)minx=sx; if (sx>maxx)maxx=sx;
-                                    if (sy<miny)miny=sy; if (sy>maxy)maxy=sy;
-                                }
-                            }
-                            // do phan tan cua cac diem chieu duoc
-                            float spread = 0.0f;
-                            if (score >= 2) spread = (maxx-minx) + (maxy-miny);
-                            // Yeu cau: chieu dung TAT CA dich + phan tan du lon
-                            // (ma tran rac chum ve tam -> spread ~0 -> bi loai).
-                            bool good = (score == nHeads) && (spread > (W*0.15f));
-                            if (good && (score > bScore || (score==bScore && spread>bSpread))) {
-                                bScore = score; bSpread = spread;
-                                bOff = off; bSrc = sIdx; bMode = mode;
-                            }
-                        }
-                    }
-                }
-
-                if (bScore >= 3) {
-                    s_vmFound = true; s_vmSrc = bSrc; s_vmOff = bOff; s_vmMode = bMode;
-                    ESPLog("MTXSCAN OK: %s+0x%llx mode=%s score=%d/%d spread=%.0f -> DA AP DUNG",
-                           srcName[bSrc], (unsigned long long)bOff,
-                           bMode==0?"row":"transpose", bScore, nHeads, bSpread);
-                } else {
-                    ESPLog("MTXSCAN: chua tim duoc (nHeads=%d, bScore=%d). Thu lai frame sau.", nHeads, bScore);
-                }
-            }
-        }
-
-        // AP DUNG offset da tim: nap lai 16 float tu dung nguon+offset vao matrix.
-        // Neu mode=transpose thi chuyen ve layout row de WorldToScreen dung nhu cu.
-        if (s_vmFound) {
-            uint64_t base = (s_vmSrc == 0) ? camera : ReadAddr<uint64_t>(camera + Off::Camera_ViewMatrixPtr);
-            if (isVaildPtr(base) || s_vmSrc == 0) {
-                float m[16];
-                for (int k = 0; k < 16; k++) m[k] = ReadAddr<float>(base + s_vmOff + k * 0x4);
-                if (s_vmMode == 0) {
-                    for (int k = 0; k < 16; k++) matrix[k] = m[k];
-                } else {
-                    // transpose -> row
-                    matrix[0]=m[0];  matrix[1]=m[4];  matrix[2]=m[8];   matrix[3]=m[12];
-                    matrix[4]=m[1];  matrix[5]=m[5];  matrix[6]=m[9];   matrix[7]=m[13];
-                    matrix[8]=m[2];  matrix[9]=m[6];  matrix[10]=m[10]; matrix[11]=m[14];
-                    matrix[12]=m[3]; matrix[13]=m[7]; matrix[14]=m[11]; matrix[15]=m[15];
-                }
-            }
-        }
-    }
-    
-    g_playerCount = coutValue;
+        g_playerCount = coutValue;
     snprintf(g_debugStatus, sizeof(g_debugStatus), "OK: doc memory thanh cong! mBase=0x%llx", Moudule_Base);
     
     float viewWidth = self.bounds.size.width;
@@ -1052,7 +1000,7 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
         Vector3 HeadPos     = getPositionExt(getHead(PawnObject));
 
         float dis = Vector3::Distance(myLocation, HeadPos);
-        if (dis > 400.0f) continue;
+        if (dis > 500.0f) continue; // gioi han tong (>= max slider ESP/aim)
 
         // === Chon target aimbot ===
         if (isAimbot && dis <= aimDistance) {
@@ -1078,7 +1026,7 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
             }
         }
 
-        if (dis > 220.0f) continue; 
+        if (dis > espDistance) continue; 
 
         Vector3 RightToePos = getPositionExt(getRightToeNode(PawnObject));
         Vector3 HipPos      = getPositionExt(getHip(PawnObject));
