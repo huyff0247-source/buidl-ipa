@@ -5,7 +5,7 @@
 
 //-------------------------------------------------------------//
 // "Malware related compile-time hacks with C++11" by LeFF     //
-//  Nâng cấp bởi LDVQuang - No Copyright, code by LDVQuang     //
+//  Nâng cấp bởi TGHUY - No Copyright, code by TGHUY           //
 //-------------------------------------------------------------//
 
 #if defined(_MSC_VER)

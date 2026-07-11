@@ -176,7 +176,7 @@ static float aimDistance = 200.0f; // Khoảng cách aim mặc định
     [headerView addSubview:titleLabel];
     
     UILabel *subTitle = [[UILabel alloc] initWithFrame:CGRectMake(350, 12, 150, 20)];
-    subTitle.text = @"Cheat by LDVQuang";
+    subTitle.text = @"Cheat by TGHUY";
     subTitle.textColor = [UIColor lightGrayColor];
     subTitle.font = [UIFont systemFontOfSize:10];
     [headerView addSubview:subTitle];
@@ -788,7 +788,14 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
     int coutValue = pawnCount;
     
     float *matrix = GetViewMatrix(camera);
-    ESPLog("render: viewMatrix=%p m[0]=%.3f m[5]=%.3f", matrix, matrix?matrix[0]:0.0f, matrix?matrix[5]:0.0f);
+    if (matrix) {
+        ESPLog("render: VM row0=[%.3f %.3f %.3f %.3f]", matrix[0], matrix[1], matrix[2], matrix[3]);
+        ESPLog("render: VM row1=[%.3f %.3f %.3f %.3f]", matrix[4], matrix[5], matrix[6], matrix[7]);
+        ESPLog("render: VM row2=[%.3f %.3f %.3f %.3f]", matrix[8], matrix[9], matrix[10], matrix[11]);
+        ESPLog("render: VM row3=[%.3f %.3f %.3f %.3f]", matrix[12], matrix[13], matrix[14], matrix[15]);
+    } else {
+        ESPLog("render: viewMatrix=NULL");
+    }
     if (matrix == NULL) {
         snprintf(g_debugStatus, sizeof(g_debugStatus), "LOI: view matrix NULL");
         return;
@@ -807,6 +814,7 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
     bool isVis = false;
     bool isFire = false;
     
+    bool w2sLoggedThisFrame = false;
     for (int i = 0; i < coutValue; i++) {
         uint64_t PawnObject = pawns[i];
         if (!isVaildPtr(PawnObject)) continue;
@@ -859,6 +867,12 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
         Vector3 HeadTop     = HeadPos; HeadTop.y += 0.2f;
         Vector3 w2sHead     = WorldToScreen(HeadTop, matrix, viewWidth, viewHeight);
         Vector3 w2sToe      = WorldToScreen(RightToePos, matrix, viewWidth, viewHeight);
+        if (!w2sLoggedThisFrame) {
+            w2sLoggedThisFrame = true;
+            ESPLog("render: W2S dich headWorld=(%.2f,%.2f,%.2f) -> screen=(%.1f,%.1f) toe=(%.1f,%.1f) view=(%.0fx%.0f) dis=%.1f myLoc=(%.2f,%.2f,%.2f)",
+                   HeadPos.x, HeadPos.y, HeadPos.z, w2sHead.x, w2sHead.y, w2sToe.x, w2sToe.y, viewWidth, viewHeight, dis,
+                   myLocation.x, myLocation.y, myLocation.z);
+        }
 
         Vector3 wHead       = WorldToScreen(HeadPos, matrix, viewWidth, viewHeight);
         Vector3 wHip        = WorldToScreen(HipPos, matrix, viewWidth, viewHeight);
