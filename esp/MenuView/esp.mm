@@ -1,5 +1,6 @@
 #import "esp.h"
 #import "mahoa.h"
+#import "Offsets.h"
 #import <QuartzCore/QuartzCore.h>
 #import <UIKit/UIKit.h> 
 #include <sys/mman.h>
@@ -661,14 +662,12 @@ Quaternion GetRotationToLocation(Vector3 targetLocation, float y_bias, Vector3 m
 void set_aim(uint64_t player, Quaternion rotation) {
     if (!isVaildPtr(player)) return;
     
-    // MJALKGNKGOA (AimRotation): 0x4D4 (cu) -> 0x4E8 (moi)
-    WriteAddr<Quaternion>(player + 0x4E8, rotation);
+    WriteAddr<Quaternion>(player + Off::AimRotation, rotation);
 }
 
 bool get_IsFiring(uint64_t player) {
     if (!isVaildPtr(player)) return false;
-    // MPJBMKODJMF (bool): 0x6E8 (cu, LOIJOEBOEKE class) -> 0x6F0 (moi, bool)
-    bool fireState = ReadAddr<bool>(player + 0x6F0);
+    bool fireState = ReadAddr<bool>(player + Off::IsFiring);
     return fireState;
 }
 
@@ -676,8 +675,7 @@ bool get_IsFiring(uint64_t player) {
 bool get_IsVisible(uint64_t player) {
     if (!isVaildPtr(player)) return false;
     
-    // LMACIGOFJNL: 0x930 (cu, pointer) -> 0x930 (moi, int truc tiep)
-    int visibleFlags = ReadAddr<int>(player + 0x930);
+    int visibleFlags = ReadAddr<int>(player + Off::IsVisible);
     return (visibleFlags & 0x1) == 1;
 }
 
@@ -726,8 +724,7 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
         return;
     }
     
-    // MainCameraTransform: 0x2B0 (cu) -> 0x380 (moi)
-    uint64_t mainCameraTransform = ReadAddr<uint64_t>(myPawnObject + 0x380);
+    uint64_t mainCameraTransform = ReadAddr<uint64_t>(myPawnObject + Off::Pawn_MainCameraTransform);
     Vector3 myLocation = getPositionExt(mainCameraTransform);
     
     ESPLog("render: myPawn=0x%llx camTransform=0x%llx myLoc=(%.1f,%.1f,%.1f)", myPawnObject, mainCameraTransform, myLocation.x, myLocation.y, myLocation.z);
@@ -740,16 +737,15 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
     int pawnCount = 0;
 
     // Nguon 1: List<Player>. Layout: _items(Player[])=+0x10, _size(int)=+0x18, data=+0x20.
-    static const uint64_t kListCands[] = { 0x158, 0x160, 0x578 };
-    for (size_t li = 0; li < sizeof(kListCands)/sizeof(kListCands[0]); ++li) {
-        uint64_t lp = ReadAddr<uint64_t>(match + kListCands[li]);
-        if (!isVaildPtr(lp)) { ESPLog("render: list off=0x%llx ptr=0x%llx INVALID", (unsigned long long)kListCands[li], lp); continue; }
-        int sz = ReadAddr<int>(lp + 0x18);
-        uint64_t items = ReadAddr<uint64_t>(lp + 0x10);
-        ESPLog("render: list off=0x%llx ptr=0x%llx size=%d items=0x%llx", (unsigned long long)kListCands[li], lp, sz, items);
+    for (int li = 0; li < Off::MatchListCands_N; ++li) {
+        uint64_t lp = ReadAddr<uint64_t>(match + Off::MatchListCands[li]);
+        if (!isVaildPtr(lp)) { ESPLog("render: list off=0x%llx ptr=0x%llx INVALID", (unsigned long long)Off::MatchListCands[li], lp); continue; }
+        int sz = ReadAddr<int>(lp + Off::List_Size);
+        uint64_t items = ReadAddr<uint64_t>(lp + Off::List_Items);
+        ESPLog("render: list off=0x%llx ptr=0x%llx size=%d items=0x%llx", (unsigned long long)Off::MatchListCands[li], lp, sz, items);
         if (sz > 0 && sz <= 100 && isVaildPtr(items)) {
             for (int i = 0; i < sz && pawnCount < kPawnsMax; i++) {
-                uint64_t po = ReadAddr<uint64_t>(items + 0x20 + 8 * i);
+                uint64_t po = ReadAddr<uint64_t>(items + Off::Array_DataStart + 8 * i);
                 AddPawnUnique(pawns, &pawnCount, kPawnsMax, po);
             }
         }
@@ -760,20 +756,21 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
     // Key BHGGAEEHJCO (0x18 byte): value @ entry+0x20, stride 0x28.
     // Key byte (0x148):            value @ entry+0x10, stride 0x18.
     struct DictCand { uint64_t off; uint64_t valOff; uint64_t stride; };
-    static const DictCand kDictCands[] = {
-        { 0x128, 0x20, 0x28 }, { 0x130, 0x20, 0x28 }, { 0x140, 0x20, 0x28 },
-        { 0x150, 0x20, 0x28 }, { 0x5E0, 0x20, 0x28 }, { 0x5E8, 0x20, 0x28 },
-        { 0x148, 0x10, 0x18 },
-    };
-    for (size_t di = 0; di < sizeof(kDictCands)/sizeof(kDictCands[0]); ++di) {
+    DictCand kDictCands[Off::MatchDictObjCands_N + Off::MatchDictByteCands_N];
+    int nDict = 0;
+    for (int k = 0; k < Off::MatchDictObjCands_N; ++k)
+        kDictCands[nDict++] = { Off::MatchDictObjCands[k], Off::DictKeyObj_ValOff, Off::DictKeyObj_Stride };
+    for (int k = 0; k < Off::MatchDictByteCands_N; ++k)
+        kDictCands[nDict++] = { Off::MatchDictByteCands[k], Off::DictKeyByte_ValOff, Off::DictKeyByte_Stride };
+    for (int di = 0; di < nDict; ++di) {
         uint64_t dp = ReadAddr<uint64_t>(match + kDictCands[di].off);
         if (!isVaildPtr(dp)) { ESPLog("render: dict off=0x%llx ptr=0x%llx INVALID", (unsigned long long)kDictCands[di].off, dp); continue; }
-        int cnt = ReadAddr<int>(dp + 0x20);
-        uint64_t entries = ReadAddr<uint64_t>(dp + 0x18);
+        int cnt = ReadAddr<int>(dp + Off::Dict_Count);
+        uint64_t entries = ReadAddr<uint64_t>(dp + Off::Dict_Entries);
         ESPLog("render: dict off=0x%llx ptr=0x%llx count=%d entries=0x%llx", (unsigned long long)kDictCands[di].off, dp, cnt, entries);
         if (cnt > 0 && cnt <= 100 && isVaildPtr(entries)) {
             for (int i = 0; i < cnt && pawnCount < kPawnsMax; i++) {
-                uint64_t entry = entries + 0x20 + (uint64_t)i * kDictCands[di].stride;
+                uint64_t entry = entries + Off::Array_DataStart + (uint64_t)i * kDictCands[di].stride;
                 uint64_t po = ReadAddr<uint64_t>(entry + kDictCands[di].valOff);
                 AddPawnUnique(pawns, &pawnCount, kPawnsMax, po);
             }
@@ -827,28 +824,36 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
                         if (!isfinite(m[i]) || fabsf(m[i]) > 1e6f) { ok = false; break; }
                     }
                     if (!ok) continue;
-                    // Thu 2 kieu layout: row-major (nhu WorldToScreen hien tai) va transpose.
+                    // Chieu 2 diem: P1=head, P2=head+2m (Y). Ma tran dung -> P2 cao hon
+                    // P1 tren man hinh (sy2<sy1), cung cot (|dx|<W*0.3), cach nhau
+                    // hop ly. Ma tran rac chum ca 2 ve tam -> bi loai.
                     for (int mode = 0; mode < 2; mode++) {
-                        float c0,c1,c2,c3, r0,r1,r2,r3;
+                        float w1, x1n, y1n, w2, x2n, y2n;
                         if (mode == 0) {
-                            // w = m3*x+m7*y+m11*z+m15 ; x-row = m0,m4,m8,m12 ; y-row = m1,m5,m9,m13
-                            c0=m[0]; c1=m[4]; c2=m[8];  c3=m[12];
-                            r0=m[1]; r1=m[5]; r2=m[9];  r3=m[13];
-                            float w = m[3]*hp.x + m[7]*hp.y + m[11]*hp.z + m[15];
-                            if (w < 1.0f) continue;
-                            float sx = W/2 + (c0*hp.x + c1*hp.y + c2*hp.z + c3)/w*(W/2);
-                            float sy = H/2 - (r0*hp.x + r1*hp.y + r2*hp.z + r3)/w*(H/2);
-                            if (sx >= 0 && sx <= W && sy >= 0 && sy <= H)
-                                ESPLog("MTXSCAN HIT %s+0x%llx mode=row w=%.2f screen=(%.1f,%.1f)", srcName[s], (unsigned long long)off, w, sx, sy);
+                            w1 = m[3]*hp.x + m[7]*hp.y + m[11]*hp.z + m[15];
+                            x1n = m[0]*hp.x + m[4]*hp.y + m[8]*hp.z + m[12];
+                            y1n = m[1]*hp.x + m[5]*hp.y + m[9]*hp.z + m[13];
+                            w2 = m[3]*hp.x + m[7]*(hp.y+2.0f) + m[11]*hp.z + m[15];
+                            x2n = m[0]*hp.x + m[4]*(hp.y+2.0f) + m[8]*hp.z + m[12];
+                            y2n = m[1]*hp.x + m[5]*(hp.y+2.0f) + m[9]*hp.z + m[13];
                         } else {
-                            // transpose: w = m12*x+m13*y+m14*z+m15 ; x-row=m0..m3 ; y-row=m4..m7
-                            float w = m[12]*hp.x + m[13]*hp.y + m[14]*hp.z + m[15];
-                            if (w < 1.0f) continue;
-                            float sx = W/2 + (m[0]*hp.x + m[1]*hp.y + m[2]*hp.z + m[3])/w*(W/2);
-                            float sy = H/2 - (m[4]*hp.x + m[5]*hp.y + m[6]*hp.z + m[7])/w*(H/2);
-                            if (sx >= 0 && sx <= W && sy >= 0 && sy <= H)
-                                ESPLog("MTXSCAN HIT %s+0x%llx mode=transpose w=%.2f screen=(%.1f,%.1f)", srcName[s], (unsigned long long)off, w, sx, sy);
+                            w1 = m[12]*hp.x + m[13]*hp.y + m[14]*hp.z + m[15];
+                            x1n = m[0]*hp.x + m[1]*hp.y + m[2]*hp.z + m[3];
+                            y1n = m[4]*hp.x + m[5]*hp.y + m[6]*hp.z + m[7];
+                            w2 = m[12]*hp.x + m[13]*(hp.y+2.0f) + m[14]*hp.z + m[15];
+                            x2n = m[0]*hp.x + m[1]*(hp.y+2.0f) + m[2]*hp.z + m[3];
+                            y2n = m[4]*hp.x + m[5]*(hp.y+2.0f) + m[6]*hp.z + m[7];
                         }
+                        if (w1 < 1.0f || w2 < 1.0f) continue;
+                        float sx1 = W/2 + x1n/w1*(W/2), sy1 = H/2 - y1n/w1*(H/2);
+                        float sx2 = W/2 + x2n/w2*(W/2), sy2 = H/2 - y2n/w2*(H/2);
+                        if (sx1 < 0 || sx1 > W || sy1 < 0 || sy1 > H) continue;
+                        float dx = fabsf(sx1 - sx2), dsep = sy1 - sy2;
+                        // P2 (cao 2m) phai O TREN (sy nho hon) va tach ro; cung cot.
+                        if (dsep < 4.0f || dsep > H) continue;
+                        if (dx > W * 0.3f) continue;
+                        ESPLog("MTXSCAN HIT %s+0x%llx mode=%s w=%.2f head=(%.1f,%.1f) up2m=(%.1f,%.1f) sep=%.1f",
+                               srcName[s], (unsigned long long)off, mode==0?"row":"transpose", w1, sx1, sy1, sx2, sy2, dsep);
                     }
                 }
             }
