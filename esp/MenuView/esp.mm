@@ -664,29 +664,99 @@ bool get_IsVisible(uint64_t player) {
 
 
 - (void)renderESPToLayers:(NSMutableArray<CALayer *> *)layers {
-    if (Moudule_Base == -1) return;
+    if (Moudule_Base == -1 || Moudule_Base == 0) {
+        static int logCount = 0;
+        if (logCount < 3) {
+            NSLog(@"[ESP] Module Base chua san sang: 0x%llx", Moudule_Base);
+            logCount++;
+        }
+        return;
+    }
 
     uint64_t matchGame = getMatchGame(Moudule_Base);
+    if (!isVaildPtr(matchGame)) {
+        static int logCount = 0;
+        if (logCount < 3) {
+            NSLog(@"[ESP] matchGame khong hop le: 0x%llx", matchGame);
+            logCount++;
+        }
+        return;
+    }
+    
     uint64_t camera = CameraMain(matchGame);
-    if (!isVaildPtr(camera)) return;
+    if (!isVaildPtr(camera)) {
+        static int logCount = 0;
+        if (logCount < 3) {
+            NSLog(@"[ESP] camera khong hop le: 0x%llx", camera);
+            logCount++;
+        }
+        return;
+    }
 
     uint64_t match = getMatch(matchGame);
-    if (!isVaildPtr(match)) return;
+    if (!isVaildPtr(match)) {
+        static int logCount = 0;
+        if (logCount < 3) {
+            NSLog(@"[ESP] match khong hop le: 0x%llx", match);
+            logCount++;
+        }
+        return;
+    }
 
     uint64_t myPawnObject = getLocalPlayer(match);
-    if (!isVaildPtr(myPawnObject)) return;
+    if (!isVaildPtr(myPawnObject)) {
+        static int logCount = 0;
+        if (logCount < 3) {
+            NSLog(@"[ESP] myPawnObject khong hop le: 0x%llx", myPawnObject);
+            logCount++;
+        }
+        return;
+    }
     
+    // MainCameraTransform o offset 0x380
     uint64_t mainCameraTransform = ReadAddr<uint64_t>(myPawnObject + 0x380);
     Vector3 myLocation = getPositionExt(mainCameraTransform);
     
-    // m_LReplicationEntitis (Dictionary<uint, LReplicationEntity>) ở offset 0xC8
+    // m_LReplicationEntitis (Dictionary<uint, LReplicationEntity>) o offset 0xC8
     uint64_t player = ReadAddr<uint64_t>(match + 0xC8);
-    if (!isVaildPtr(player)) return;
-    // Dictionary: _entries ở 0x28, _count ở 0x18
+    if (!isVaildPtr(player)) {
+        static int logCount = 0;
+        if (logCount < 3) {
+            NSLog(@"[ESP] player dictionary khong hop le: 0x%llx", player);
+            logCount++;
+        }
+        return;
+    }
+    
+    // Dictionary: _entries o 0x28, _count o 0x18
     uint64_t tValue = ReadAddr<uint64_t>(player + 0x28);
     int coutValue = ReadAddr<int>(player + 0x18);
     
+    if (!isVaildPtr(tValue) || coutValue <= 0 || coutValue > 200) {
+        static int logCount = 0;
+        if (logCount < 3) {
+            NSLog(@"[ESP] dictionary entries khong hop le: tValue=0x%llx count=%d", tValue, coutValue);
+            logCount++;
+        }
+        return;
+    }
+    
     float *matrix = GetViewMatrix(camera);
+    if (matrix == NULL) {
+        static int logCount = 0;
+        if (logCount < 3) {
+            NSLog(@"[ESP] view matrix NULL");
+            logCount++;
+        }
+        return;
+    }
+    
+    static int successLogCount = 0;
+    if (successLogCount < 3) {
+        NSLog(@"[ESP] Render OK: matchGame=0x%llx camera=0x%llx match=0x%llx myPawn=0x%llx count=%d", 
+              matchGame, camera, match, myPawnObject, coutValue);
+        successLogCount++;
+    }
     float viewWidth = self.bounds.size.width;
     float viewHeight = self.bounds.size.height;
     CGPoint screenCenter = CGPointMake(viewWidth / 2, viewHeight / 2);

@@ -4,8 +4,19 @@
 
 uint64_t getMatchGame(uint64_t Moudule_Base) {
     uint64_t GameFacade_TypeInfo = ReadAddr<uint64_t>(Moudule_Base + 0xBFD8978);
+    if (!isVaildPtr(GameFacade_TypeInfo)) {
+        NSLog(@"[ESP] getMatchGame: GameFacade_TypeInfo khong hop le: 0x%llx", GameFacade_TypeInfo);
+        return 0;
+    }
     uint64_t GameFacade_Static = ReadAddr<uint64_t>(GameFacade_TypeInfo + 0xB8);
-    return ReadAddr<uint64_t>(GameFacade_Static + 0x0);
+    if (!isVaildPtr(GameFacade_Static)) {
+        NSLog(@"[ESP] getMatchGame: GameFacade_Static khong hop le: 0x%llx", GameFacade_Static);
+        return 0;
+    }
+    uint64_t matchGame = ReadAddr<uint64_t>(GameFacade_Static + 0x0);
+    NSLog(@"[ESP] getMatchGame: TypeInfo=0x%llx Static=0x%llx matchGame=0x%llx", 
+          GameFacade_TypeInfo, GameFacade_Static, matchGame);
+    return matchGame;
 }
 
 uint64_t getMatch(uint64_t matchgame) {
@@ -18,18 +29,33 @@ uint64_t getLocalPlayer(uint64_t match) {
 
 uint64_t CameraMain(uint64_t matchgame) {
     uint64_t CameraControllerManager = ReadAddr<uint64_t>(matchgame + 0xD8);
-    // Camera BAGLCCLIOEK ở offset 0x20 (dump mới, cũ là 0x18)
-    return ReadAddr<uint64_t>(CameraControllerManager + 0x20);
+    if (!isVaildPtr(CameraControllerManager)) {
+        return 0;
+    }
+    // Camera BAGLCCLIOEK o offset 0x20 (dump moi)
+    uint64_t camera = ReadAddr<uint64_t>(CameraControllerManager + 0x20);
+    return camera;
 }
 
 float* GetViewMatrix(uint64_t cameraMain) {
+    if (!isVaildPtr(cameraMain)) return NULL;
+    
+    // Camera Unity: camera + 0x10 -> internal pointer
+    // internal + 0xD8 -> view matrix (16 floats)
     uint64_t v1 = ReadAddr<uint64_t>(cameraMain + 0x10);
-
+    if (!isVaildPtr(v1)) {
+        // Thu offset khac: camera + 0x18 hoac camera + 0x20
+        v1 = ReadAddr<uint64_t>(cameraMain + 0x18);
+        if (!isVaildPtr(v1)) {
+            return NULL;
+        }
+    }
+    
     static float matrix[16];
     for (int i = 0; i < 16; i++) {
         matrix[i] = ReadAddr<float>(v1 + 0xD8 + i * 0x4);
     }
-
+    
     return matrix;
 }
 
@@ -94,7 +120,7 @@ uint64_t getRightHand(uint64_t player) {
 }
 
 bool isLocalTeamMate(uint64_t localPlayer, uint64_t Player) {
-    // PlayerID struct ở offset 0x3A0 (dump mới, cũ là 0x2D0)
+    // PlayerID struct o offset 0x3A0 (dump moi)
     COW_GamePlay_PlayerID_o myPlayerID = ReadAddr<COW_GamePlay_PlayerID_o>(localPlayer + 0x3A0);
     COW_GamePlay_PlayerID_o PlayerID = ReadAddr<COW_GamePlay_PlayerID_o>(Player + 0x3A0);
 
@@ -105,14 +131,20 @@ bool isLocalTeamMate(uint64_t localPlayer, uint64_t Player) {
 }
 
 int GetDataUInt16(uint64_t player, int varID) {
-    // m_PRIDataPool ở offset 0x70 (dump mới, cũ là 0x68)
+    // m_PRIDataPool o offset 0x70 (dump moi)
     uint64_t IPRIDataPool = ReadAddr<uint64_t>(player + 0x70);
     if (isVaildPtr(IPRIDataPool)) {
-        // m_Datas ở offset 0x10 (ReplicationDataPoolUnsafe) - giữ nguyên
+        // m_Datas o offset 0x10 (ReplicationDataPoolUnsafe) - array of ReplicationDataUnsafe*
         uint64_t v2 = ReadAddr<uint64_t>(IPRIDataPool + 0x10);
-        uint64_t v4 = ReadAddr<uint64_t>(v2 + 0x8 * varID + 0x20);
-        int v6 = ReadAddr<int>(v4 + 0x18);
-        return v6;
+        if (isVaildPtr(v2)) {
+            // m_Datas[varID]: moi pointer 8 bytes, array bat dau tu offset 0x20
+            uint64_t v4 = ReadAddr<uint64_t>(v2 + 0x8 * varID + 0x20);
+            if (isVaildPtr(v4)) {
+                // ReplicationDataUnsafe.Value o offset 0x18
+                int v6 = ReadAddr<int>(v4 + 0x18);
+                return v6;
+            }
+        }
     }
     return 0;
 }
