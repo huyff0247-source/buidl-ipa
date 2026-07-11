@@ -15,41 +15,18 @@ Vector3 WorldToScreen(Vector3 obj, float *matrix, float screenX, float screenY) 
 }
 
 Vector3 getPositionExt(uint64_t transObj2) {
-    if (!isVaildPtr(transObj2)) {
-        return Vector3(0, 0, 0);
-    }
-    
-    // TransformNode.transform o offset 0x10
     uint64_t transObj = ReadAddr<uint64_t>(transObj2 + 0x10);
-    if (!isVaildPtr(transObj)) {
-        return Vector3(0, 0, 0);
-    }
     
-    // Unity Transform hierarchy:
-    // transObj + 0x38 -> TransformData pointer (matrix array)
-    // transObj + 0x40 -> index trong matrix array
     uint64_t matrix = ReadAddr<uint64_t>(transObj + 0x38);
     uint64_t index = ReadAddr<uint64_t>(transObj + 0x40);
     
-    if (!isVaildPtr(matrix)) {
-        return Vector3(0, 0, 0);
-    }
-    
-    // TransformData:
-    // matrix + 0x18 -> matrix_list (array of TMatrix)
-    // matrix + 0x20 -> matrix_indices (array of int)
     uint64_t matrix_list = ReadAddr<uint64_t>(matrix + 0x18);
     uint64_t matrix_indices = ReadAddr<uint64_t>(matrix + 0x20);
     
-    if (!isVaildPtr(matrix_list) || !isVaildPtr(matrix_indices)) {
-        return Vector3(0, 0, 0);
-    }
-    
-    // TMatrix = 48 bytes (position:16 + rotation:16 + scale:16)
     Vector3 result = ReadAddr<Vector3>(matrix_list + sizeof(TMatrix) * index);
     int transformIndex = ReadAddr<int>(matrix_indices + sizeof(int) * index);
     
-    while (transformIndex >= 0 && transformIndex < 10000) {
+    while (transformIndex >= 0) {
         TMatrix tMatrix = ReadAddr<TMatrix>(matrix_list + sizeof(TMatrix) * transformIndex);
         
         float rotX = tMatrix.rotation.x;
@@ -81,11 +58,7 @@ Vector3 getPositionExt(uint64_t transObj2) {
 }
 
 NSString *GetNickName(uint64_t PawnObject) {
-    if (!isVaildPtr(PawnObject)) return @"";
-    
-    // OriginalNickName o offset 0x430 (dump moi)
     uint64_t name = ReadAddr<uint64_t>(PawnObject + 0x430);
-    if (!isVaildPtr(name)) return @"";
     
     UTF8 PlayerName[32] = "";
     UTF16 buf16[16] = {0};

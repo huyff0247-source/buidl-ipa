@@ -17,17 +17,17 @@ int get_MaxHP(uint64_t Player);
 bool isLocalTeamMate(uint64_t localPlayer, uint64_t Player);
 int GetDataUInt16(uint64_t player, int varID);
 
-// --- Cập nhật thêm cho Bone (offset mới từ dump.cs) ---
-uint64_t getHead(uint64_t player);      // 0x630
-uint64_t getHip(uint64_t player);       // 0x638
-uint64_t getLeftAnkle(uint64_t player); // 0x668
-uint64_t getRightAnkle(uint64_t player);// 0x670
-uint64_t getLeftShoulder(uint64_t player); // 0x6A0 (LeftArmNode)
-uint64_t getRightShoulder(uint64_t player);// 0x6A8 (RightArmNode)
-uint64_t getLeftElbow(uint64_t player);    // 0x6C8 (LeftForeArmNode)
-uint64_t getRightElbow(uint64_t player);   // 0x6C0 (RightForeArmNode)
-uint64_t getLeftHand(uint64_t player);     // 0x6B8
-uint64_t getRightHand(uint64_t player);    // 0x6B0
-uint64_t getRightToeNode(uint64_t player); // 0x680
+// --- Cập nhật thêm cho Bone ---
+uint64_t getHead(uint64_t player);      // 0x550
+uint64_t getHip(uint64_t player);       // 0x558
+uint64_t getLeftAnkle(uint64_t player); // 0x588
+uint64_t getRightAnkle(uint64_t player);// 0x590
+uint64_t getLeftShoulder(uint64_t player); // 0x5B8 (LeftArmNode)
+uint64_t getRightShoulder(uint64_t player);// 0x5C0 (RightArmNode)
+uint64_t getLeftElbow(uint64_t player);    // 0x5E0 (LeftForeArmNode)
+uint64_t getRightElbow(uint64_t player);   // 0x5D8 (RightForeArmNode)
+uint64_t getLeftHand(uint64_t player);     // 0x5D0
+uint64_t getRightHand(uint64_t player);    // 0x5C8
+uint64_t getRightToeNode(uint64_t player); // 0x5A0
 
 #endif

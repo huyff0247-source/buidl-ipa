@@ -1,6 +1,4 @@
 #import "MemoryUtils.h"
-#import <mach-o/loader.h>
-#import <mach-o/nlist.h>
 
 pid_t GetGameProcesspid(char* GameProcessName) {
     size_t length = 0;
@@ -50,52 +48,18 @@ vm_map_offset_t GetGameModule_Base(char* GameProcessName) {
     
     pid_t pid = GetGameProcesspid(GameProcessName);
     if (pid == -1) {
-        NSLog(@"[ESP] Khong tim thay process: %s", GameProcessName);
         return 0;
     }
     
     kern_return_t kret = task_for_pid(mach_task_self(), pid, &get_task);
     
-    if (get_task == MACH_PORT_NULL) {
-        NSLog(@"[ESP] task_for_pid that bai voi pid: %d", pid);
-        return 0;
-    }
-    
-    NSLog(@"[ESP] Tim module base cho: %s (pid=%d)", GameProcessName, pid);
-    
-    // Iterate qua tat ca memory regions de tim module freefireth
-    while (1) {
+    if (get_task != MACH_PORT_NULL) {
         kern_return_t kr = mach_vm_region_recurse(get_task, &vmoffset, &vmsize, &nesting_depth, (vm_region_recurse_info_t)&vbr, &vbrcount);
-        if (kr != KERN_SUCCESS) {
-            break;
+        if (kr == KERN_SUCCESS) {
+            return vmoffset;
         }
-        
-        // Doc header cua region de kiem tra co phai Mach-O image khong
-        struct mach_header_64 header;
-        vm_size_t header_size = 0;
-        kern_return_t read_kr = vm_read_overwrite(get_task, (vm_address_t)vmoffset, sizeof(header), (vm_address_t)&header, &header_size);
-        
-        if (read_kr == KERN_SUCCESS && header_size == sizeof(header)) {
-            // Kiem tra magic number: MH_MAGIC_64 = 0xFEEDFACF
-            if (header.magic == MH_MAGIC_64) {
-                // Doc ten module tu LC_ID_DYLIB hoac LC_ID_EXECUTABLE
-                // Don gian: kiem tra ten process co chua "freefireth" khong
-                // Vi Mach-O khong luu ten module truc tiep, ta can dung cach khac
-                
-                // Cach 1: Kiem tra region dau tien (thuong la __TEXT segment cua main executable)
-                // Cach 2: Dung dyld info de lay ten
-                
-                // Don gian nhat: lay region dau tien co MH_MAGIC_64
-                // Vi freefireth la main executable, region dau tien thuong la base
-                NSLog(@"[ESP] Tim thay Mach-O image tai: 0x%llx (size=0x%llx)", vmoffset, vmsize);
-                return vmoffset;
-            }
-        }
-        
-        vmoffset += vmsize;
     }
     
-    NSLog(@"[ESP] Khong tim thay module base");
     return 0;
 }
 
@@ -127,3 +91,4 @@ bool _write(long addr, const void *buffer, int len)
     }
     return true;
 }
+
