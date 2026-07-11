@@ -647,18 +647,18 @@ void set_aim(uint64_t player, Quaternion rotation) {
 
 bool get_IsFiring(uint64_t player) {
     if (!isVaildPtr(player)) return false;
-    bool fireState = ReadAddr<bool>(player + 0x6E8);
+    // MPJBMKODJMF (bool) ở 0x6F0 - dump mới
+    // 0x6E8 là LOIJOEBOEKE (AFBNBKPGOGO class), không phải bool
+    bool fireState = ReadAddr<bool>(player + 0x6F0);
     return fireState;
 }
 
 
 bool get_IsVisible(uint64_t player) {
     if (!isVaildPtr(player)) return false;
-    
-    uint64_t visibleObj = ReadAddr<uint64_t>(player + 0x930);
-    if (!isVaildPtr(visibleObj)) return false;
 
-    int visibleFlags = ReadAddr<int>(visibleObj + 0x10); 
+    // LMACIGOFJNL là int (dump mới), không phải pointer
+    int visibleFlags = ReadAddr<int>(player + 0x930);
     return (visibleFlags & 0x1) == 0;
 }
 
@@ -679,9 +679,12 @@ bool get_IsVisible(uint64_t player) {
     uint64_t mainCameraTransform = ReadAddr<uint64_t>(myPawnObject + 0x380);
     Vector3 myLocation = getPositionExt(mainCameraTransform);
     
+    // m_LReplicationEntitis (Dictionary<uint, LReplicationEntity>) ở offset 0xC8
     uint64_t player = ReadAddr<uint64_t>(match + 0xC8);
+    if (!isVaildPtr(player)) return;
+    // Dictionary: _entries ở 0x28, _count ở 0x18
     uint64_t tValue = ReadAddr<uint64_t>(player + 0x28);
-    int coutValue = ReadAddr<int>(tValue + 0x18);
+    int coutValue = ReadAddr<int>(player + 0x18);
     
     float *matrix = GetViewMatrix(camera);
     float viewWidth = self.bounds.size.width;
@@ -695,7 +698,9 @@ bool get_IsVisible(uint64_t player) {
     bool isFire = false;
     
     for (int i = 0; i < coutValue; i++) {
-        uint64_t PawnObject = ReadAddr<uint64_t>(tValue + 0x20 + 8 * i);
+        // Dictionary.Entry: hashCode(4) + next(4) + key(8) + value(8) = 24 bytes (0x18)
+        // entry[i].value ở offset 0x10 trong entry
+        uint64_t PawnObject = ReadAddr<uint64_t>(tValue + 0x20 + 0x18 * i + 0x10);
         if (!isVaildPtr(PawnObject)) continue;
 
         bool isLocalTeam = isLocalTeamMate(myPawnObject, PawnObject);

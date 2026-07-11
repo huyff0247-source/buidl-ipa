@@ -3,7 +3,7 @@
 #pragma mark - Function Game
 
 uint64_t getMatchGame(uint64_t Moudule_Base) {
-    uint64_t GameFacade_TypeInfo = ReadAddr<uint64_t>(Moudule_Base + 0x9985B70);
+    uint64_t GameFacade_TypeInfo = ReadAddr<uint64_t>(Moudule_Base + 0xBFD8978);
     uint64_t GameFacade_Static = ReadAddr<uint64_t>(GameFacade_TypeInfo + 0xB8);
     return ReadAddr<uint64_t>(GameFacade_Static + 0x0);
 }
