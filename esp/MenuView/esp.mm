@@ -1,6 +1,6 @@
 #import "esp.h"
 #import "mahoa.h"
-#import "Offsets.h"
+#import "../lib/Offsets.h"
 #import <QuartzCore/QuartzCore.h>
 #import <UIKit/UIKit.h> 
 #include <sys/mman.h>
