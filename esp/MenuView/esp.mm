@@ -315,31 +315,32 @@ static bool  aimOnlyFire = YES;    // Chi aim khi dang ban
     aimTabContainer.layer.borderColor = [UIColor whiteColor].CGColor;
     aimTabContainer.layer.borderWidth = 1;
     aimTabContainer.layer.cornerRadius = 10;
-    aimTabContainer.hidden = YES; // Ẩn mặc định
+    aimTabContainer.clipsToBounds = YES; // khong cho control tran ra ngoai vien
+    aimTabContainer.hidden = YES; // An mac dinh
     [menuContainer addSubview:aimTabContainer];
-    
-    UILabel *aimTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, 10, 200, 20)];
+
+    UILabel *aimTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, 6, 200, 20)];
     aimTitle.text = @"Aimbot Logic";
     aimTitle.textColor = [UIColor whiteColor];
-    aimTitle.font = [UIFont boldSystemFontOfSize:16];
+    aimTitle.font = [UIFont boldSystemFontOfSize:15];
     [aimTabContainer addSubview:aimTitle];
-    
-    UIView *aimLine = [[UIView alloc] initWithFrame:CGRectMake(15, 35, 410, 1)];
+
+    UIView *aimLine = [[UIView alloc] initWithFrame:CGRectMake(15, 27, 410, 1)];
     aimLine.backgroundColor = [UIColor whiteColor];
     [aimTabContainer addSubview:aimLine];
-    
-    [self addFeatureToView:aimTabContainer withTitle:@"Enable Aimbot" atY:42 initialValue:isAimbot andAction:@selector(toggleAimbot:)];
-    [self addFeatureToView:aimTabContainer withTitle:@"Only When Firing" atY:74 initialValue:aimOnlyFire andAction:@selector(toggleAimOnlyFire:)];
+
+    [self addFeatureToView:aimTabContainer withTitle:@"Enable Aimbot" atY:34 initialValue:isAimbot andAction:@selector(toggleAimbot:)];
+    [self addFeatureToView:aimTabContainer withTitle:@"Only When Firing" atY:64 initialValue:aimOnlyFire andAction:@selector(toggleAimOnlyFire:)];
 
     // Aim Bone selector (Head / Neck / Hip)
-    UILabel *boneLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 108, 90, 24)];
+    UILabel *boneLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 96, 85, 24)];
     boneLabel.text = @"Aim Bone:";
     boneLabel.textColor = [UIColor whiteColor];
     boneLabel.font = [UIFont systemFontOfSize:13];
     [aimTabContainer addSubview:boneLabel];
 
     UISegmentedControl *boneSeg = [[UISegmentedControl alloc] initWithItems:@[@"Head", @"Neck", @"Hip"]];
-    boneSeg.frame = CGRectMake(110, 106, 310, 28);
+    boneSeg.frame = CGRectMake(105, 94, 315, 28);
     boneSeg.selectedSegmentIndex = aimBone;
     boneSeg.tintColor = [UIColor whiteColor];
     if (@available(iOS 13.0, *)) {
@@ -350,20 +351,20 @@ static bool  aimOnlyFire = YES;    // Chi aim khi dang ban
     [aimTabContainer addSubview:boneSeg];
 
     // FOV Slider (co hien gia tri)
-    UILabel *fovLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 142, 300, 18)];
+    UILabel *fovLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 126, 300, 16)];
     fovLabel.text = @"FOV Radius (px):";
     fovLabel.textColor = [UIColor whiteColor];
-    fovLabel.font = [UIFont systemFontOfSize:13];
+    fovLabel.font = [UIFont systemFontOfSize:12];
     [aimTabContainer addSubview:fovLabel];
 
-    fovValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(325, 142, 95, 18)];
+    fovValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(320, 126, 100, 16)];
     fovValueLabel.text = [NSString stringWithFormat:@"%.0f", aimFov];
     fovValueLabel.textColor = [UIColor redColor];
     fovValueLabel.textAlignment = NSTextAlignmentRight;
-    fovValueLabel.font = [UIFont boldSystemFontOfSize:13];
+    fovValueLabel.font = [UIFont boldSystemFontOfSize:12];
     [aimTabContainer addSubview:fovValueLabel];
 
-    UISlider *fovSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 162, 405, 20)];
+    UISlider *fovSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 143, 405, 18)];
     fovSlider.minimumValue = 10.0;
     fovSlider.maximumValue = 400.0;
     fovSlider.value = aimFov;
@@ -373,20 +374,20 @@ static bool  aimOnlyFire = YES;    // Chi aim khi dang ban
     [aimTabContainer addSubview:fovSlider];
 
     // Distance Slider (co hien gia tri)
-    UILabel *distLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 186, 300, 18)];
+    UILabel *distLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 167, 300, 16)];
     distLabel.text = @"Aim Distance (m):";
     distLabel.textColor = [UIColor whiteColor];
-    distLabel.font = [UIFont systemFontOfSize:13];
+    distLabel.font = [UIFont systemFontOfSize:12];
     [aimTabContainer addSubview:distLabel];
 
-    distValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(325, 186, 95, 18)];
+    distValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(320, 167, 100, 16)];
     distValueLabel.text = [NSString stringWithFormat:@"%.0f", aimDistance];
     distValueLabel.textColor = [UIColor cyanColor];
     distValueLabel.textAlignment = NSTextAlignmentRight;
-    distValueLabel.font = [UIFont boldSystemFontOfSize:13];
+    distValueLabel.font = [UIFont boldSystemFontOfSize:12];
     [aimTabContainer addSubview:distValueLabel];
 
-    UISlider *distSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 206, 405, 20)];
+    UISlider *distSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 184, 405, 18)];
     distSlider.minimumValue = 10.0;
     distSlider.maximumValue = 500.0;
     distSlider.value = aimDistance;
@@ -396,20 +397,20 @@ static bool  aimOnlyFire = YES;    // Chi aim khi dang ban
     [aimTabContainer addSubview:distSlider];
 
     // Aim Speed Slider (co hien gia tri)
-    UILabel *speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 228, 300, 18)];
+    UILabel *speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 208, 300, 16)];
     speedLabel.text = @"Aim Speed:";
     speedLabel.textColor = [UIColor whiteColor];
-    speedLabel.font = [UIFont systemFontOfSize:13];
+    speedLabel.font = [UIFont systemFontOfSize:12];
     [aimTabContainer addSubview:speedLabel];
 
-    speedValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(325, 228, 95, 18)];
+    speedValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(320, 208, 100, 16)];
     speedValueLabel.text = [NSString stringWithFormat:@"%.2f", aimSpeed];
     speedValueLabel.textColor = [UIColor greenColor];
     speedValueLabel.textAlignment = NSTextAlignmentRight;
-    speedValueLabel.font = [UIFont boldSystemFontOfSize:13];
+    speedValueLabel.font = [UIFont boldSystemFontOfSize:12];
     [aimTabContainer addSubview:speedValueLabel];
 
-    UISlider *speedSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 246, 405, 20)];
+    UISlider *speedSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 225, 405, 18)];
     speedSlider.minimumValue = 0.05;
     speedSlider.maximumValue = 1.0;
     speedSlider.value = aimSpeed;
@@ -689,18 +690,6 @@ static bool  aimOnlyFire = YES;    // Chi aim khi dang ban
         circleLayer.strokeColor = [UIColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:0.5].CGColor;
         circleLayer.lineWidth = 1.0;
         [self.drawingLayers addObject:circleLayer];
-
-        // So o chinh giua vong FOV: "FOV | Distance"
-        CATextLayer *fovInfo = [CATextLayer layer];
-        NSArray *boneNames = @[@"Head", @"Neck", @"Hip"];
-        NSString *boneName = (aimBone >= 0 && aimBone < 3) ? boneNames[aimBone] : @"Head";
-        fovInfo.string = [NSString stringWithFormat:@"FOV %.0f | %.0fm | %@", aimFov, aimDistance, boneName];
-        fovInfo.fontSize = 11;
-        fovInfo.alignmentMode = kCAAlignmentCenter;
-        fovInfo.foregroundColor = [UIColor colorWithRed:1.0 green:1.0 blue:0.4 alpha:0.9].CGColor;
-        fovInfo.contentsScale = [UIScreen mainScreen].scale;
-        fovInfo.frame = CGRectMake(screenX - 90, screenY - aimFov - 16, 180, 14);
-        [self.drawingLayers addObject:fovInfo];
     }
     
     [self renderESPToLayers:self.drawingLayers];
@@ -910,92 +899,116 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
         return;
     }
 
-    // === TU DO OFFSET VIEW MATRIX (chay 1 lan) - CHAM DIEM theo so dich chieu duoc ===
-    // Thu tung offset tren camera & v1, tung mode (row/transpose). Voi moi offset
-    // chieu TAT CA dich; dem so dich co toa do nam trong man hinh & w hop ly.
-    // Offset dung = offset chieu duoc NHIEU dich nhat. Log top ket qua.
+    // === TU DONG DO + AP DUNG OFFSET VIEW MATRIX ===
+    // Van de: doc tu offset 0xD8 ra ma tran rac (row0=[0 0 0 0]) -> W2S sai vi tri.
+    // Giai phap: quet cac offset tren camera & v1, cham diem theo so dich chieu
+    // dung + do phan tan (loai ma tran rac chum ve 1 diem). Tim duoc thi LUU lai
+    // va AP DUNG ngay cho matrix (khong can build lai). Chay lai moi frame den khi
+    // tim duoc (can >=3 dich de dang tin cay).
+    static bool     s_vmFound = false;
+    static int      s_vmSrc   = 0;   // 0 = camera, 1 = v1
+    static uint64_t s_vmOff   = 0;
+    static int      s_vmMode  = 0;   // 0 = row, 1 = transpose
     {
-        static bool s_mtxScanDone = false;
-        if (!s_mtxScanDone && pawnCount > 0) {
-            s_mtxScanDone = true;
-            float W = self.bounds.size.width, H = self.bounds.size.height;
-
-            // Gom toa do head cua toi da 32 dich (bo qua ptr rac)
+        float W = self.bounds.size.width, H = self.bounds.size.height;
+        if (!s_vmFound && W > 300 && pawnCount > 0) {
             Vector3 heads[32];
             int nHeads = 0;
             for (int i = 0; i < pawnCount && nHeads < 32; i++) {
                 if (!isVaildPtr(pawns[i])) continue;
+                if (isLocalTeamMate(myPawnObject, pawns[i])) continue; // bo dong doi
                 Vector3 hp = getPositionExt(getHead(pawns[i]));
                 if (!isfinite(hp.x) || !isfinite(hp.y) || !isfinite(hp.z)) continue;
                 heads[nHeads++] = hp;
             }
-            ESPLog("MTXSCAN: bat dau. nHeads=%d view=(%.0fx%.0f)", nHeads, W, H);
 
-            uint64_t v1 = ReadAddr<uint64_t>(camera + Off::Camera_ViewMatrixPtr);
-            uint64_t srcs[2] = { camera, v1 };
-            const char* srcName[2] = { "camera", "v1" };
+            if (nHeads >= 3) {
+                uint64_t v1 = ReadAddr<uint64_t>(camera + Off::Camera_ViewMatrixPtr);
+                uint64_t srcs[2] = { camera, v1 };
+                const char* srcName[2] = { "camera", "v1" };
 
-            // Luu 5 offset diem cao nhat
-            int   bestScore[5]  = {0,0,0,0,0};
-            uint64_t bestOff[5] = {0,0,0,0,0};
-            int   bestSrc[5]    = {0,0,0,0,0};
-            int   bestMode[5]   = {0,0,0,0,0};
+                int      bScore = 0;
+                float    bSpread = 0.0f;
+                uint64_t bOff = 0; int bSrc = 0, bMode = 0;
 
-            for (int sIdx = 0; sIdx < 2; sIdx++) {
-                uint64_t base = srcs[sIdx];
-                if (!isVaildPtr(base)) continue;
-                for (uint64_t off = 0x0; off <= 0x600; off += 0x4) {
-                    float m[16];
-                    bool ok = true;
-                    for (int k = 0; k < 16; k++) {
-                        m[k] = ReadAddr<float>(base + off + k * 0x4);
-                        if (!isfinite(m[k]) || fabsf(m[k]) > 1e6f) { ok = false; break; }
-                    }
-                    if (!ok) continue;
-
-                    for (int mode = 0; mode < 2; mode++) {
-                        int score = 0;
-                        for (int h = 0; h < nHeads; h++) {
-                            Vector3 p = heads[h];
-                            float w, xn, yn;
-                            if (mode == 0) {
-                                w  = m[3]*p.x + m[7]*p.y + m[11]*p.z + m[15];
-                                xn = m[0]*p.x + m[4]*p.y + m[8]*p.z + m[12];
-                                yn = m[1]*p.x + m[5]*p.y + m[9]*p.z + m[13];
-                            } else {
-                                w  = m[12]*p.x + m[13]*p.y + m[14]*p.z + m[15];
-                                xn = m[0]*p.x + m[1]*p.y + m[2]*p.z + m[3];
-                                yn = m[4]*p.x + m[5]*p.y + m[6]*p.z + m[7];
-                            }
-                            if (w < 1.0f || w > 100000.0f) continue;
-                            float sx = W/2 + xn/w*(W/2);
-                            float sy = H/2 - yn/w*(H/2);
-                            if (sx >= 0 && sx <= W && sy >= 0 && sy <= H) score++;
+                for (int sIdx = 0; sIdx < 2; sIdx++) {
+                    uint64_t base = srcs[sIdx];
+                    if (!isVaildPtr(base)) continue;
+                    for (uint64_t off = 0x0; off <= 0x600; off += 0x4) {
+                        float m[16];
+                        bool ok = true;
+                        for (int k = 0; k < 16; k++) {
+                            m[k] = ReadAddr<float>(base + off + k * 0x4);
+                            if (!isfinite(m[k]) || fabsf(m[k]) > 1e6f) { ok = false; break; }
                         }
-                        // Chi quan tam offset chieu duoc >=2 dich va >= 1 nua so dich
-                        if (score >= 2 && score * 2 >= nHeads) {
-                            for (int b = 0; b < 5; b++) {
-                                if (score > bestScore[b]) {
-                                    for (int t = 4; t > b; t--) {
-                                        bestScore[t]=bestScore[t-1]; bestOff[t]=bestOff[t-1];
-                                        bestSrc[t]=bestSrc[t-1]; bestMode[t]=bestMode[t-1];
-                                    }
-                                    bestScore[b]=score; bestOff[b]=off;
-                                    bestSrc[b]=sIdx; bestMode[b]=mode;
-                                    break;
+                        if (!ok) continue;
+
+                        for (int mode = 0; mode < 2; mode++) {
+                            int score = 0;
+                            float minx=1e9f,maxx=-1e9f,miny=1e9f,maxy=-1e9f;
+                            for (int h = 0; h < nHeads; h++) {
+                                Vector3 p = heads[h];
+                                float w, xn, yn;
+                                if (mode == 0) {
+                                    w  = m[3]*p.x + m[7]*p.y + m[11]*p.z + m[15];
+                                    xn = m[0]*p.x + m[4]*p.y + m[8]*p.z + m[12];
+                                    yn = m[1]*p.x + m[5]*p.y + m[9]*p.z + m[13];
+                                } else {
+                                    w  = m[12]*p.x + m[13]*p.y + m[14]*p.z + m[15];
+                                    xn = m[0]*p.x + m[1]*p.y + m[2]*p.z + m[3];
+                                    yn = m[4]*p.x + m[5]*p.y + m[6]*p.z + m[7];
                                 }
+                                if (w < 1.0f || w > 100000.0f) continue;
+                                float sx = W/2 + xn/w*(W/2);
+                                float sy = H/2 - yn/w*(H/2);
+                                if (sx >= 0 && sx <= W && sy >= 0 && sy <= H) {
+                                    score++;
+                                    if (sx<minx)minx=sx; if (sx>maxx)maxx=sx;
+                                    if (sy<miny)miny=sy; if (sy>maxy)maxy=sy;
+                                }
+                            }
+                            // do phan tan cua cac diem chieu duoc
+                            float spread = 0.0f;
+                            if (score >= 2) spread = (maxx-minx) + (maxy-miny);
+                            // Yeu cau: chieu dung TAT CA dich + phan tan du lon
+                            // (ma tran rac chum ve tam -> spread ~0 -> bi loai).
+                            bool good = (score == nHeads) && (spread > (W*0.15f));
+                            if (good && (score > bScore || (score==bScore && spread>bSpread))) {
+                                bScore = score; bSpread = spread;
+                                bOff = off; bSrc = sIdx; bMode = mode;
                             }
                         }
                     }
                 }
+
+                if (bScore >= 3) {
+                    s_vmFound = true; s_vmSrc = bSrc; s_vmOff = bOff; s_vmMode = bMode;
+                    ESPLog("MTXSCAN OK: %s+0x%llx mode=%s score=%d/%d spread=%.0f -> DA AP DUNG",
+                           srcName[bSrc], (unsigned long long)bOff,
+                           bMode==0?"row":"transpose", bScore, nHeads, bSpread);
+                } else {
+                    ESPLog("MTXSCAN: chua tim duoc (nHeads=%d, bScore=%d). Thu lai frame sau.", nHeads, bScore);
+                }
             }
-            for (int b = 0; b < 5; b++) {
-                if (bestScore[b] > 0)
-                    ESPLog("MTXSCAN TOP%d: %s+0x%llx mode=%s score=%d/%d",
-                           b+1, srcName[bestSrc[b]], (unsigned long long)bestOff[b],
-                           bestMode[b]==0?"row":"transpose", bestScore[b], nHeads);
+        }
+
+        // AP DUNG offset da tim: nap lai 16 float tu dung nguon+offset vao matrix.
+        // Neu mode=transpose thi chuyen ve layout row de WorldToScreen dung nhu cu.
+        if (s_vmFound) {
+            uint64_t base = (s_vmSrc == 0) ? camera : ReadAddr<uint64_t>(camera + Off::Camera_ViewMatrixPtr);
+            if (isVaildPtr(base) || s_vmSrc == 0) {
+                float m[16];
+                for (int k = 0; k < 16; k++) m[k] = ReadAddr<float>(base + s_vmOff + k * 0x4);
+                if (s_vmMode == 0) {
+                    for (int k = 0; k < 16; k++) matrix[k] = m[k];
+                } else {
+                    // transpose -> row
+                    matrix[0]=m[0];  matrix[1]=m[4];  matrix[2]=m[8];   matrix[3]=m[12];
+                    matrix[4]=m[1];  matrix[5]=m[5];  matrix[6]=m[9];   matrix[7]=m[13];
+                    matrix[8]=m[2];  matrix[9]=m[6];  matrix[10]=m[10]; matrix[11]=m[14];
+                    matrix[12]=m[3]; matrix[13]=m[7]; matrix[14]=m[11]; matrix[15]=m[15];
+                }
             }
-            ESPLog("MTXSCAN: xong.");
         }
     }
     
@@ -1184,6 +1197,10 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
         [layers addObject:cntLayer];
     }
 
+    if (isAimbot) {
+        ESPLog("AIM: target=0x%llx onlyFire=%d isFire=%d bone=%d speed=%.2f matrixValid=%d",
+               (unsigned long long)bestTarget, aimOnlyFire, isFire, aimBone, aimSpeed, matrixValid);
+    }
     if (isAimbot && isVaildPtr(bestTarget) && (!aimOnlyFire || isFire)) {
         Vector3 aimTarget = getAimBonePos(bestTarget, aimBone);
 
@@ -1192,6 +1209,8 @@ static inline void AddPawnUnique(uint64_t *pawns, int *pawnCount, int maxCount, 
         Quaternion targetLook = GetRotationToLocation(aimTarget, yBias, myLocation);
 
         set_aim(myPawnObject, targetLook, aimSpeed);
+        ESPLog("AIM: da ghi rotation (%.3f,%.3f,%.3f,%.3f) toi player 0x%llx",
+               targetLook.x, targetLook.y, targetLook.z, targetLook.w, (unsigned long long)myPawnObject);
     }
 }
 
