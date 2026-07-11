@@ -19,7 +19,7 @@ Xyris_CFLAGS += -fobjc-arc \
 -Wno-unused-value \
 -Wno-module-import-in-extern-c -Wno-unused-but-set-variable
 
-Xyris_CFLAGS += -Iinclude
+Xyris_CFLAGS += -Iinclude -Iesp/lib
 Xyris_CFLAGS += -include hud-prefix.pch
 Xyris_LDFLAGS += Core.a
 
