@@ -3,6 +3,10 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
+#include <libproc.h>
+
+// Bundle ID cua Free Fire (xac dinh game chac chan qua bundle id)
+#define FF_BUNDLE_ID "com.dts.freefireth"
 
 // Ghi log vao file de debug.
 // Ghi vao Documents cua app (luon ghi duoc) va thu /var/mobile/Documents.
@@ -85,6 +89,72 @@ pid_t GetGameProcesspid(char* GameProcessName) {
     return -1;
 }
 
+// Ghi ra log tat ca process dang chay (de debug khi khong tim thay game)
+void LogAllProcesses(void) {
+    size_t length = 0;
+    static const int name[] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
+    if (sysctl((int *)name, (sizeof(name)/sizeof(*name)) - 1, NULL, &length, NULL, 0) != 0) return;
+    struct kinfo_proc *buf = (struct kinfo_proc *)malloc(length);
+    if (!buf) return;
+    if (sysctl((int *)name, (sizeof(name)/sizeof(*name)) - 1, buf, &length, NULL, 0) != 0) { free(buf); return; }
+    int count = (int)length / sizeof(struct kinfo_proc);
+    ESPLog("LogAllProcesses: tong %d process", count);
+    for (int i = 0; i < count; ++i) {
+        pid_t p = buf[i].kp_proc.p_pid;
+        char path[PROC_PIDPATHINFO_MAXSIZE] = {0};
+        proc_pidpath(p, path, sizeof(path));
+        ESPLog("  pid=%d comm='%s' path='%s'", p, buf[i].kp_proc.p_comm, path);
+    }
+    free(buf);
+}
+
+// Tim pid cua game qua BUNDLE ID (chinh xac nhat).
+// Lay duong dan bundle tu LSApplicationProxy roi so voi proc_pidpath cua tung process.
+pid_t GetGamePidByBundle(const char *bundleId) {
+    @autoreleasepool {
+        // Goi qua runtime de KHONG can link them framework (MobileCoreServices).
+        Class proxyCls = NSClassFromString(@"LSApplicationProxy");
+        NSString *bundlePath = nil;
+        if (proxyCls) {
+            id proxy = [proxyCls performSelector:@selector(applicationProxyForIdentifier:)
+                                      withObject:[NSString stringWithUTF8String:bundleId]];
+            NSURL *url = [proxy bundleURL];
+            bundlePath = url.path;
+        }
+        if (bundlePath.length == 0) {
+            ESPLog("GetGamePidByBundle: khong lay duoc bundleURL cho %s (LSApplicationProxy=%p)", bundleId, proxyCls);
+            return -1;
+        }
+        ESPLog("GetGamePidByBundle: bundlePath='%s'", [bundlePath UTF8String]);
+
+        size_t length = 0;
+        static const int name[] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
+        if (sysctl((int *)name, (sizeof(name)/sizeof(*name)) - 1, NULL, &length, NULL, 0) != 0) return -1;
+        struct kinfo_proc *buf = (struct kinfo_proc *)malloc(length);
+        if (!buf) return -1;
+        if (sysctl((int *)name, (sizeof(name)/sizeof(*name)) - 1, buf, &length, NULL, 0) != 0) { free(buf); return -1; }
+
+        int count = (int)length / sizeof(struct kinfo_proc);
+        const char *bp = [bundlePath UTF8String];
+        pid_t found = -1;
+        for (int i = 0; i < count; ++i) {
+            pid_t p = buf[i].kp_proc.p_pid;
+            char path[PROC_PIDPATHINFO_MAXSIZE] = {0};
+            if (proc_pidpath(p, path, sizeof(path)) > 0) {
+                // process path thuong la .../<App>.app/<exe> -> nam trong thu muc bundle
+                if (strstr(path, bp) != NULL) {
+                    ESPLog("GetGamePidByBundle: MATCH pid=%d path='%s'", p, path);
+                    found = p;
+                    break;
+                }
+            }
+        }
+        free(buf);
+        if (found == -1) ESPLog("GetGamePidByBundle: khong co process nao khop bundle path");
+        return found;
+    }
+}
+
 // Ly do that bai gan nhat, hien tren HUD
 char g_baseErr[256] = "";
 
@@ -100,7 +170,13 @@ vm_map_offset_t GetGameModule_Base(char* GameProcessName) {
         "freefireth", "freefire", "GameAssembly", "UnityFramework"
     };
 
-    pid_t pid = GetGameProcesspid(GameProcessName);
+    // 1) Uu tien: tim chinh xac theo BUNDLE ID com.dts.freefireth
+    pid_t pid = GetGamePidByBundle(FF_BUNDLE_ID);
+
+    // 2) Fallback: tim theo ten process (comm)
+    if (pid == -1) {
+        pid = GetGameProcesspid(GameProcessName);
+    }
     if (pid == -1) {
         for (size_t i = 0; i < sizeof(candidates)/sizeof(candidates[0]); ++i) {
             pid = GetGameProcesspid((char*)candidates[i]);
@@ -112,8 +188,9 @@ vm_map_offset_t GetGameModule_Base(char* GameProcessName) {
     }
 
     if (pid == -1) {
-        ESPLog("GetGameModule_Base: Khong tim thay process %s (game chua chay?)", GameProcessName);
-        snprintf(g_baseErr, sizeof(g_baseErr), "process '%s' NOT FOUND (game chua mo/sai ten)", GameProcessName);
+        ESPLog("GetGameModule_Base: Khong tim thay process (bundle=%s, comm=%s). Liet ke tat ca process:", FF_BUNDLE_ID, GameProcessName);
+        LogAllProcesses();
+        snprintf(g_baseErr, sizeof(g_baseErr), "NOT FOUND bundle=%s (game chua mo?) - xem esp_log.txt", FF_BUNDLE_ID);
         return 0;
     }
 

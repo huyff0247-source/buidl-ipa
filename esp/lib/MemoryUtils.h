@@ -22,6 +22,8 @@ inline bool isVaildPtr(long addr){
 }
 
 pid_t GetGameProcesspid(char* GameProcessName);
+pid_t GetGamePidByBundle(const char *bundleId);
+void  LogAllProcesses(void);
 vm_map_offset_t GetGameModule_Base(char* GameProcessName);
 
 // Ghi ly do that bai gan nhat cua GetGameModule_Base (de hien tren HUD)
